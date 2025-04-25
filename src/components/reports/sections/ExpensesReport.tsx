@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { ShoppingBag, Building2, Zap, Users, TrendingUp, TrendingDown } from "lucide-react";
+import { ShoppingBag, Building2, Zap, Users, Bookmark, TrendingDown, TrendingUp } from "lucide-react";
+import api from "@/services/api";
 
 interface Props {
   selectedClub: string;
@@ -15,55 +16,118 @@ interface Props {
   };
 }
 
-// Mock data
-const expensesByCategory = [
-  { name: "Compras", value: 45000, color: "#3B82F6", icon: ShoppingBag },
-  { name: "Servicios", value: 25000, color: "#10B981", icon: Zap },
-  { name: "Salarios", value: 30000, color: "#8B5CF6", icon: Users },
-  { name: "Renta", value: 20000, color: "#F59E0B", icon: Building2 },
-];
+interface ExpenseData {
+  totalExpenses: number;
+  previousTotalExpenses: number;
+  categoryDistribution: {
+    name: string;
+    value: number;
+  }[];
+  topExpenses: {
+    _id: string;
+    description: string;
+    category: string;
+    amount: number;
+    date: string;
+  }[];
+}
 
-const monthlyGoal = {
-  target: 100000,
-  current: 120000
-};
-
-const topExpenses = [
-  { id: "1", description: "Compra de inventario", category: "Compras", amount: 15000, date: "2024-03-20" },
-  { id: "2", description: "Pago de renta", category: "Renta", amount: 12000, date: "2024-03-15" },
-  { id: "3", description: "Servicios públicos", category: "Servicios", amount: 8000, date: "2024-03-10" },
-  { id: "4", description: "Nómina", category: "Salarios", amount: 10000, date: "2024-03-05" },
-  { id: "5", description: "Mantenimiento", category: "Servicios", amount: 5000, date: "2024-03-01" },
-];
-
-export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Props) {
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: 'asc' | 'desc';
-  } | null>(null);
-
-  const handleSort = (key: string) => {
-    setSortConfig(current => {
-      if (current?.key === key) {
-        return {
-          key,
-          direction: current.direction === 'asc' ? 'desc' : 'asc'
-        };
-      }
-      return { key, direction: 'asc' };
-    });
+// Mapa para normalizar categorías
+const normalizeCategory = (category: string): string => {
+  const categoryMap: { [key: string]: string } = {
+    purchase: "Producto",
+    producto: "Producto",
+    services: "Servicios",
+    rent: "Renta",
+    operational: "Operacional",
+    salary: "Salarios"
   };
 
-  const totalExpenses = expensesByCategory.reduce((sum, category) => sum + category.value, 0);
-  const previousPeriodExpenses = 95000; // Mock data
-  const percentageChange = ((totalExpenses - previousPeriodExpenses) / previousPeriodExpenses) * 100;
-  const goalProgress = (monthlyGoal.current / monthlyGoal.target) * 100;
-  const isOverBudget = monthlyGoal.current > monthlyGoal.target;
-  
-  // Find highest expense
-  const highestExpense = topExpenses.reduce((max, expense) => 
-    expense.amount > max.amount ? expense : max
-  , topExpenses[0]);
+  return categoryMap[category.toLowerCase()] || category;
+};
+
+// Actualiza los iconos y colores para incluir las nuevas categorías
+const categoryIcons = {
+  "Producto": ShoppingBag,
+  "Operacional": Building2,
+  "Servicios": Zap,
+  "Salarios": Users,
+  "Renta": Building2,
+  "other": Bookmark
+};
+
+const categoryColors = {
+  "Producto": "#3B82F6",    // Azul
+  "Operacional": "#10B981", // Verde
+  "Servicios": "#8B5CF6",   // Púrpura
+  "Salarios": "#F59E0B",    // Ámbar
+  "Renta": "#EC4899",       // Rosa
+  "other": "#64748B"        // Gris
+};
+
+export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Props) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<ExpenseData | null>(null);
+
+  useEffect(() => {
+    const fetchExpensesData = async () => {
+      try {
+        setLoading(true);
+        const params = {
+          clubId: selectedClub,
+          period: selectedPeriod,
+          startDate: dateRange.start,
+          endDate: dateRange.end
+        };
+
+        const response = await api.get<ExpenseData>('/reports/expenses', { params });
+        
+        // Normalizar las categorías en los datos recibidos
+        const normalizedData = {
+          ...response.data,
+          categoryDistribution: normalizeCategories(response.data.categoryDistribution),
+          topExpenses: response.data.topExpenses.map(expense => ({
+            ...expense,
+            category: normalizeCategory(expense.category)
+          }))
+        };
+        
+        setData(normalizedData);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching expenses data:", err);
+        setError(err.response?.data?.message || "Error al cargar los datos de gastos");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpensesData();
+  }, [selectedClub, selectedPeriod, dateRange]);
+
+  // Función para normalizar y agrupar categorías en la distribución
+  const normalizeCategories = (categories: {name: string, value: number}[]) => {
+    const categoryMap = new Map<string, number>();
+    
+    categories.forEach(category => {
+      const normalizedName = normalizeCategory(category.name);
+      const currentValue = categoryMap.get(normalizedName) || 0;
+      categoryMap.set(normalizedName, currentValue + category.value);
+    });
+    
+    return Array.from(categoryMap).map(([name, value]) => ({ name, value }));
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-96">Cargando...</div>;
+  }
+
+  if (error || !data) {
+    return <div className="flex items-center justify-center h-96 text-red-500">{error}</div>;
+  }
+
+  const percentageChange = ((data.totalExpenses - data.previousTotalExpenses) / data.previousTotalExpenses) * 100;
 
   return (
     <div className="space-y-6">
@@ -80,7 +144,7 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
             </div>
             <div>
               <div className="text-2xl font-bold text-red-600">
-                ${totalExpenses.toLocaleString()}
+                ${data.totalExpenses.toLocaleString()}
               </div>
               <div className="flex items-center gap-2 mt-1">
                 {percentageChange > 0 ? (
@@ -115,66 +179,28 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
               </h3>
               <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
                 {(() => {
-                  const CategoryIcon = expensesByCategory.find(
-                    cat => cat.name === highestExpense.category
-                  )?.icon || ShoppingBag;
+                  const normalizedCategory = normalizeCategory(data.topExpenses[0].category);
+                  const CategoryIcon = categoryIcons[normalizedCategory as keyof typeof categoryIcons] || Bookmark;
                   return <CategoryIcon className="h-4 w-4 text-orange-600" />;
                 })()}
               </div>
             </div>
             <div>
               <div className="text-2xl font-bold text-orange-600">
-                ${highestExpense.amount.toLocaleString()}
+                ${data.topExpenses[0].amount.toLocaleString()}
               </div>
               <div className="flex flex-col gap-1 mt-1">
                 <span className="text-sm font-medium">
-                  {highestExpense.description}
+                  {data.topExpenses[0].description}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  {new Date(highestExpense.date).toLocaleDateString()}
+                  {new Date(data.topExpenses[0].date).toLocaleDateString()}
                 </span>
               </div>
             </div>
           </div>
         </Card>
       </div>
-
-      {/* Monthly Goal Progress */}
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4">Meta Mensual de Gastos</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Meta</p>
-              <p className="text-2xl font-bold">${monthlyGoal.target.toLocaleString()}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Real</p>
-              <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">${monthlyGoal.current.toLocaleString()}</p>
-                {isOverBudget ? (
-                  <TrendingUp className="h-5 w-5 text-red-500" />
-                ) : (
-                  <TrendingDown className="h-5 w-5 text-green-500" />
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Progreso</span>
-              <span className={isOverBudget ? "text-red-500" : "text-green-500"}>
-                {goalProgress.toFixed(1)}%
-              </span>
-            </div>
-            <Progress
-              value={goalProgress}
-              className="h-2"
-              indicatorClassName={isOverBudget ? "bg-red-500" : "bg-green-500"}
-            />
-          </div>
-        </div>
-      </Card>
 
       {/* Expenses Distribution */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -184,7 +210,7 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={expensesByCategory}
+                  data={data.categoryDistribution}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -193,13 +219,14 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {expensesByCategory.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {data.categoryDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={categoryColors[entry.name as keyof typeof categoryColors] || categoryColors.other} />
                   ))}
                 </Pie>
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
+                      const total = data.categoryDistribution.reduce((sum, cat) => sum + cat.value, 0);
                       return (
                         <div className="rounded-lg border bg-background p-2 shadow-sm">
                           <div className="grid gap-2">
@@ -211,7 +238,7 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
                                 ${payload[0].value.toLocaleString()}
                               </span>
                               <span className="text-sm text-muted-foreground">
-                                {((payload[0].value / totalExpenses) * 100).toFixed(1)}%
+                                {((payload[0].value / total) * 100).toFixed(1)}%
                               </span>
                             </div>
                           </div>
@@ -230,16 +257,16 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
         <Card className="p-6">
           <h3 className="text-lg font-medium mb-4">Resumen por Categoría</h3>
           <div className="space-y-4">
-            {expensesByCategory.map((category) => {
-              const Icon = category.icon;
-              const percentage = (category.value / totalExpenses) * 100;
+            {data.categoryDistribution.map((category) => {
+              const Icon = categoryIcons[category.name as keyof typeof categoryIcons] || Bookmark;
+              const percentage = (category.value / data.totalExpenses) * 100;
               
               return (
                 <div key={category.name} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg" style={{ backgroundColor: `${category.color}20` }}>
-                        <Icon className="h-4 w-4" style={{ color: category.color }} />
+                      <div className="p-2 rounded-lg" style={{ backgroundColor: `${categoryColors[category.name as keyof typeof categoryColors] || categoryColors.other}20` }}>
+                        <Icon className="h-4 w-4" style={{ color: categoryColors[category.name as keyof typeof categoryColors] || categoryColors.other }} />
                       </div>
                       <span className="font-medium">{category.name}</span>
                     </div>
@@ -249,7 +276,6 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
                     <Progress value={percentage} className="h-1" />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>{percentage.toFixed(1)}% del total</span>
-                      <span>{category.value / monthlyGoal.target * 100}% de la meta</span>
                     </div>
                   </div>
                 </div>
@@ -272,23 +298,23 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
             </TableRow>
           </TableHeader>
           <TableBody>
-            {topExpenses.map((expense) => {
-              const categoryInfo = expensesByCategory.find(cat => cat.name === expense.category);
-              const Icon = categoryInfo?.icon;
+            {data.topExpenses.map((expense) => {
+              const normalizedCategory = normalizeCategory(expense.category);
+              const Icon = categoryIcons[normalizedCategory as keyof typeof categoryIcons] || Bookmark;
               
               return (
-                <TableRow key={expense.id}>
+                <TableRow key={expense._id}>
                   <TableCell className="font-medium">
                     {expense.description}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {Icon && (
-                        <div className="p-1 rounded-lg" style={{ backgroundColor: `${categoryInfo.color}20` }}>
-                          <Icon className="h-4 w-4" style={{ color: categoryInfo.color }} />
+                        <div className="p-1 rounded-lg" style={{ backgroundColor: `${categoryColors[normalizedCategory as keyof typeof categoryColors] || categoryColors.other}20` }}>
+                          <Icon className="h-4 w-4" style={{ color: categoryColors[normalizedCategory as keyof typeof categoryColors] || categoryColors.other }} />
                         </div>
                       )}
-                      {expense.category}
+                      {normalizedCategory}
                     </div>
                   </TableCell>
                   <TableCell>
