@@ -1,8 +1,7 @@
-import { useState } from "react";
+import React from "react";
+import { useEffect, useState, } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -11,7 +10,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Package, Coffee, User, Calendar, Search, ArrowUpDown } from "lucide-react";
+import { Package, Coffee, User, Calendar, Search, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import  api  from "@/services/api";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { getStatusColor } from "@/components/inventory/utils";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface Props {
   selectedClub: string;
@@ -22,228 +28,337 @@ interface Props {
   };
 }
 
-// Mock data
-const transactions = [
-  {
-    id: "1",
-    date: "2024-03-21T15:30:00",
-    type: "sale",
-    description: "Venta de productos",
-    amount: 1250,
-    items: [
-      { name: "Fórmula 1", type: "sealed", quantity: 1 },
-      { name: "Proteína", type: "prepared", quantity: 2 }
-    ],
-    employee: {
-      name: "Ana Martínez",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-    },
-    status: "completed"
-  },
-  {
-    id: "2",
-    date: "2024-03-21T14:15:00",
-    type: "expense",
-    description: "Compra de inventario",
-    amount: -5000,
-    employee: {
-      name: "Roberto Sánchez",
-      avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36"
-    },
-    status: "completed"
-  },
-  {
-    id: "3",
-    date: "2024-03-20T11:30:00",
-    type: "inventory",
-    description: "Ajuste de inventario",
-    items: [
-      { name: "Té Verde", type: "sealed", quantity: -2 }
-    ],
-    employee: {
-      name: "Ana Martínez",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-    },
-    status: "completed"
-  },
-  // Add more transactions...
-];
+interface Movimiento {
+  _id: string;
+  fecha: string;
+  tipo: 'venta' | 'gasto';
+  descripcion: string;
+  monto: number;
+  itemGroups?: Array<{
+    name: string;
+    items: Array<{
+      name: string;
+      quantity: number;
+      unit_price: number;
+      subtotal: number;
+    }>;
+    subtotal: number;
+  }>;
+  responsable: {
+    nombre: string;
+    _id: string;
+  };
+  estado: string;
+}
+
+interface MovimientoResponse {
+  movimientos: Movimiento[];
+  paginacion: {
+    total: number;
+    totalPaginas: number;
+    paginaActual: number;
+    porPagina: number;
+  };
+}
 
 export function TransactionHistoryReport({ selectedClub, selectedPeriod, dateRange }: Props) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [transactionType, setTransactionType] = useState("all");
-  const [sortConfig, setSortConfig] = useState<{
-    key: string;
-    direction: 'asc' | 'desc';
-  } | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [tipoMovimiento, setTipoMovimiento] = useState("todos");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<MovimientoResponse | null>(null);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [montoMin, setMontoMin] = useState<string>("");
+  const [montoMax, setMontoMax] = useState<string>("");
+  const [responsable, setResponsable] = useState<string>("");
+  const [estado, setEstado] = useState<string>("todos");
+  const [expandedMovimiento, setExpandedMovimiento] = useState<string | null>(null);
 
-  const handleSort = (key: string) => {
-    setSortConfig(current => {
-      if (current?.key === key) {
-        return {
-          key,
-          direction: current.direction === 'asc' ? 'desc' : 'asc'
-        };
-      }
-      return { key, direction: 'asc' };
-    });
-  };
+  const fetchMovimientos = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        clubId: selectedClub,
+        period: selectedPeriod,
+        startDate: dateRange.start,
+        endDate: dateRange.end,
+        page: paginaActual,
+        limit: 10,
+        tipo: tipoMovimiento !== 'todos' ? tipoMovimiento : undefined,
+        busqueda: busqueda || undefined,
+        responsable: responsable || undefined,
+        montoMin: montoMin ? parseFloat(montoMin) : undefined,
+        montoMax: montoMax ? parseFloat(montoMax) : undefined,
+        estado: estado !== 'todos' ? estado : undefined
+      };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = 
-      transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (transaction.items?.some(item => 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      ));
-    
-    const matchesType = transactionType === "all" || transaction.type === transactionType;
-    
-    return matchesSearch && matchesType;
-  });
-
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case "sale":
-        return <Package className="h-4 w-4 text-green-500" />;
-      case "expense":
-        return <Coffee className="h-4 w-4 text-red-500" />;
-      case "inventory":
-        return <Package className="h-4 w-4 text-blue-500" />;
-      default:
-        return null;
+      const response = await api.get<MovimientoResponse>('/reports/transactions', { params });
+      setData(response.data);
+      setError(null);
+    } catch (err: any) {
+      console.error('Error obteniendo movimientos:', err);
+      setError(err.response?.data?.message || 'Error al cargar los movimientos');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+  // Usar useEffect para aplicar los filtros con debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(fetchMovimientos, 500);
+    return () => clearTimeout(timeoutId);
+  }, [selectedClub, selectedPeriod, dateRange, paginaActual, tipoMovimiento, busqueda, responsable, montoMin, montoMax, estado]);
+
+  const toggleExpand = (movimientoId: string) => {
+    setExpandedMovimiento(current => current === movimientoId ? null : movimientoId);
   };
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
+      {/* Filtros */}
       <Card className="p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="space-y-4">
+          {/* Primera fila de filtros */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Búsqueda</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por descripción..."
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo de Movimiento</Label>
+              <Select value={tipoMovimiento} onValueChange={setTipoMovimiento}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo de movimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los movimientos</SelectItem>
+                  <SelectItem value="venta">Ventas</SelectItem>
+                  <SelectItem value="gasto">Gastos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Responsable</Label>
               <Input
-                placeholder="Buscar por descripción..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                placeholder="Buscar por responsable..."
+                value={responsable}
+                onChange={(e) => setResponsable(e.target.value)}
               />
             </div>
           </div>
-          <Select
-            value={transactionType}
-            onValueChange={setTransactionType}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Tipo de transacción" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las transacciones</SelectItem>
-              <SelectItem value="sale">Ventas</SelectItem>
-              <SelectItem value="expense">Gastos</SelectItem>
-              <SelectItem value="inventory">Ajustes de Inventario</SelectItem>
-            </SelectContent>
-          </Select>
+
+          <Separator className="my-4" />
+
+          {/* Segunda fila para rango de montos */}
+          <div className="space-y-2">
+            <Label>Rango de Montos</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  placeholder="Monto mínimo"
+                  value={montoMin}
+                  onChange={(e) => setMontoMin(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  placeholder="Monto máximo"
+                  value={montoMax}
+                  onChange={(e) => setMontoMax(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </Card>
 
-      {/* Transactions Table */}
       <Card className="p-6">
+        {/* Añadir mensaje de resultados de búsqueda */}
+        {busqueda && (
+          <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+            {data?.movimientos && data.movimientos.length > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Mostrando resultados para "<span className="font-medium text-foreground">{busqueda}</span>"
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No se encontraron resultados para "<span className="font-medium text-foreground">{busqueda}</span>"
+              </p>
+            )}
+          </div>
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort('date')}
-                  className="hover:bg-transparent"
-                >
-                  Fecha
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-              </TableHead>
+              <TableHead>Fecha</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Responsable</TableHead>
-              <TableHead>Monto/Detalle</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead className="text-right w-[180px]">Monto</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTransactions.map((transaction) => (
-              <TableRow key={transaction.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    {new Date(transaction.date).toLocaleString()}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {getTransactionIcon(transaction.type)}
-                    <span className="capitalize">{transaction.type}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{transaction.description}</div>
-                    {transaction.items && (
-                      <div className="text-sm text-muted-foreground">
-                        {transaction.items.map((item, index) => (
-                          <div key={index}>
-                            {item.name} x {item.quantity}
+            {data?.movimientos.map((movimiento) => (
+              <React.Fragment key={movimiento._id}>
+                <TableRow 
+                  className={cn(
+                    "cursor-pointer hover:bg-muted/50",
+                    movimiento.tipo === 'venta' && "group",
+                    expandedMovimiento === movimiento._id && "bg-muted/30"
+                  )}
+                  onClick={() => movimiento.tipo === 'venta' && toggleExpand(movimiento._id)}
+                >
+                  <TableCell>
+                    {new Date(movimiento.fecha).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={movimiento.tipo === 'venta' ? 'default' : 'destructive'}
+                      className={
+                        movimiento.tipo === 'venta'
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }
+                    >
+                      {movimiento.tipo === 'venta' ? 'Venta' : 'Gasto'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {movimiento.tipo === 'venta' ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm">
+                          {movimiento.itemGroups?.map(group => {
+                            const productNames = group.items.map(item => item.name).join(', ');
+                            return `${group.name} - ${productNames}`;
+                          }).join(' | ')}
+                        </span>
+                        <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                          Click para ver más detalles →
+                        </span>
+                      </div>
+                    ) : (
+                      movimiento.descripcion
+                    )}
+                  </TableCell>
+                  <TableCell>{movimiento.responsable.nombre}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    <span className={movimiento.tipo === 'venta' ? 'text-green-600' : 'text-red-600'}>
+                      {movimiento.tipo === 'venta' ? '+' : '-'}${Math.abs(movimiento.monto).toLocaleString()}
+                    </span>
+                  </TableCell>
+                </TableRow>
+
+                {/* Detalles expandibles - mantener el código existente */}
+                {movimiento.tipo === 'venta' && expandedMovimiento === movimiento._id && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="p-0 border-t-0">
+                      <div className="p-4 space-y-4 bg-muted/5">
+                        {movimiento.itemGroups?.map((group, groupIndex) => (
+                          <div key={groupIndex} className="rounded-lg bg-background border p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-base font-semibold text-primary">
+                                {group.name}
+                              </h4>
+                              <span className="text-sm font-medium tabular-nums">
+                                Subtotal: ${group.subtotal.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              {group.items.map((item, itemIndex) => (
+                                <div 
+                                  key={itemIndex}
+                                  className="grid grid-cols-4 items-center text-sm py-2 border-b last:border-0"
+                                >
+                                  <span className="col-span-2 font-medium">{item.name}</span>
+                                  <span className="text-muted-foreground tabular-nums">
+                                    {item.quantity} × ${item.unit_price.toLocaleString()}
+                                  </span>
+                                  <span className="text-right tabular-nums">
+                                    ${item.subtotal.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ))}
+                        <div className="flex justify-end">
+                          <span className="text-sm text-muted-foreground tabular-nums">
+                            Total de la venta: ${movimiento.monto.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </React.Fragment>
+            ))}
+
+            {/* Mostrar mensaje cuando no hay resultados */}
+            {data?.movimientos.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <p>No se encontraron movimientos</p>
+                    {busqueda && (
+                      <p className="text-sm">
+                        Intenta con otros términos de búsqueda
+                      </p>
                     )}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={transaction.employee.avatar}
-                      alt={transaction.employee.name}
-                      className="h-6 w-6 rounded-full"
-                    />
-                    <span>{transaction.employee.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {transaction.amount ? (
-                    <span className={transaction.amount > 0 ? "text-green-600" : "text-red-600"}>
-                      {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">
-                      Ajuste de inventario
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="secondary"
-                    className={getStatusColor(transaction.status)}
-                  >
-                    {transaction.status}
-                  </Badge>
-                </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
+
+        {/* Controles de Paginación */}
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-muted-foreground">
+            Mostrando {((data?.paginacion.paginaActual || 1) - 1) * 10 + 1} a{" "}
+            {Math.min((data?.paginacion.paginaActual || 1) * 10, data?.paginacion.total || 0)} de{" "}
+            {data?.paginacion.total || 0} movimientos
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+              disabled={paginaActual === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Página {paginaActual} de {data?.paginacion.totalPaginas || 1}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPaginaActual(p => Math.min(data?.paginacion.totalPaginas || 1, p + 1))}
+              disabled={paginaActual === (data?.paginacion.totalPaginas || 1)}
+            >
+              Siguiente
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
       </Card>
     </div>
   );

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, TrendingUp, TrendingDown, User, Calendar, DollarSign, RotateCw } from "lucide-react";
+import { Users, TrendingUp, TrendingDown, User, Calendar, DollarSign, RotateCw, ChevronLeft, ChevronRight } from "lucide-react";
+import  api  from "@/services/api";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   selectedClub: string;
@@ -15,60 +17,80 @@ interface Props {
   };
 }
 
-// Mock data
-const customerStats = {
-  totalCustomers: 250,
-  activeCustomers: 180,
-  newCustomers: 30,
-  retentionRate: 85
-};
+interface CustomerStats {
+  totalCustomers: number;
+  newCustomers: number;
+  totalSales: number;
+  averageTicket: number;
+  purchaseFrequency: number;
+}
 
-const customerTrend = [
-  { month: 'Ene', active: 160, new: 25 },
-  { month: 'Feb', active: 170, new: 28 },
-  { month: 'Mar', active: 180, new: 30 },
-  // Add more months...
-];
+interface CustomerTrend {
+  month: number;
+  year: number;
+  active: number;
+  new: number;
+}
 
-const topCustomers = [
-  {
-    id: "1",
-    name: "Juan Pérez",
-    type: "regular",
-    lastPurchase: "2024-03-20",
-    totalSpent: 5000,
-    purchaseCount: 12,
-    status: "active"
-  },
-  {
-    id: "2",
-    name: "María García",
-    type: "wholesale",
-    lastPurchase: "2024-03-19",
-    totalSpent: 8000,
-    purchaseCount: 15,
-    status: "active"
-  },
-  // Add more customers...
-];
+interface TopCustomer {
+  _id: string;
+  name: string;
+  type: string;
+  lastPurchase: string;
+  totalSpent: number;
+  purchaseCount: number;
+  status: 'active' | 'inactive';
+}
+
+interface CustomerData {
+  stats: CustomerStats;
+  trend: CustomerTrend[];
+  topCustomers: TopCustomer[];
+}
 
 export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange }: Props) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<CustomerData | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: string;
     direction: 'asc' | 'desc';
   } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
-  const handleSort = (key: string) => {
-    setSortConfig(current => {
-      if (current?.key === key) {
-        return {
-          key,
-          direction: current.direction === 'asc' ? 'desc' : 'asc'
+  useEffect(() => {
+    const fetchCustomerData = async () => {
+      try {
+        setLoading(true);
+        const params = {
+          clubId: selectedClub,
+          period: selectedPeriod,
+          startDate: dateRange.start,
+          endDate: dateRange.end
         };
+        
+        const response = await api.get<CustomerData>('/reports/customer-activity', { params });
+        setData(response.data);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching customer data:', err);
+        setError(err.response?.data?.message || 'Error al cargar los datos de clientes');
+      } finally {
+        setLoading(false);
       }
-      return { key, direction: 'asc' };
-    });
-  };
+    };
+
+    fetchCustomerData();
+  }, [selectedClub, selectedPeriod, dateRange]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-96">Cargando...</div>;
+  }
+
+  if (error || !data) {
+    return <div className="flex items-center justify-center h-96 text-red-500">{error}</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -85,7 +107,7 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
             </div>
             <div>
               <div className="text-2xl font-bold">
-                {customerStats.totalCustomers}
+                {data.stats.totalCustomers}
               </div>
               <p className="text-sm text-muted-foreground">
                 clientes registrados
@@ -94,29 +116,7 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
           </div>
         </Card>
 
-        {/* Active Customers */}
-        <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200/50">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Clientes Activos
-              </h3>
-              <User className="h-4 w-4 text-green-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600">
-                {customerStats.activeCustomers}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-muted-foreground">
-                  {((customerStats.activeCustomers / customerStats.totalCustomers) * 100).toFixed(1)}% del total
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* New Customers */}
+        {/* Nuevos Clientes */}
         <Card className="p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200/50">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -127,42 +127,62 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
             </div>
             <div>
               <div className="text-2xl font-bold text-blue-600">
-                {customerStats.newCustomers}
+                {data.stats.newCustomers}
               </div>
               <p className="text-sm text-muted-foreground">
-                este mes
+                en este período
               </p>
             </div>
           </div>
         </Card>
 
-        {/* Retention Rate */}
+        {/* Ticket Promedio */}
+        <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200/50">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Ticket Promedio
+              </h3>
+              <DollarSign className="h-4 w-4 text-green-500" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-green-600">
+                ${data.stats.averageTicket.toFixed(2)}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                por compra
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Frecuencia de Compra */}
         <Card className="p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/20 dark:to-purple-900/10 border-purple-200/50">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium text-muted-foreground">
-                Tasa de Retención
+                Frecuencia de Compra
               </h3>
               <RotateCw className="h-4 w-4 text-purple-500" />
             </div>
             <div>
               <div className="text-2xl font-bold text-purple-600">
-                {customerStats.retentionRate}%
+                {data.stats.purchaseFrequency.toFixed(1)}
               </div>
-              <div className="mt-2">
-                <Progress value={customerStats.retentionRate} className="h-2" />
-              </div>
+              <p className="text-sm text-muted-foreground">
+                compras por cliente
+              </p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Customer Trend Chart */}
+      {/* Customer Trend Chart - con diseño mejorado */}
       <Card className="p-6">
         <h3 className="text-lg font-medium mb-4">Tendencia de Clientes</h3>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={customerTrend}>
+            <LineChart data={data.trend}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
                 dataKey="month"
@@ -170,6 +190,11 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                tickFormatter={(value) => {
+                  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 
+                                    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                  return monthNames[value - 1];
+                }}
               />
               <YAxis
                 stroke="hsl(var(--muted-foreground))"
@@ -180,18 +205,20 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
               <Tooltip
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
+                    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
                     return (
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
                         <div className="grid gap-2">
                           <div className="flex flex-col">
                             <span className="text-[0.70rem] uppercase text-muted-foreground">
-                              {label}
+                              {monthNames[label - 1]}
                             </span>
                           </div>
                           {payload.map((entry) => (
                             <div key={entry.name} className="flex flex-col">
                               <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                {entry.name === "active" ? "Activos" : "Nuevos"}
+                                {entry.name === "active" ? "Con Compras" : "Nuevos"}
                               </span>
                               <span className="font-bold">
                                 {entry.value}
@@ -208,29 +235,34 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
               <Line
                 type="monotone"
                 dataKey="active"
+                name="Con Compras"
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
               />
               <Line
                 type="monotone"
                 dataKey="new"
+                name="Nuevos"
                 stroke="#22c55e"
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </Card>
 
-      {/* Top Customers Table */}
+      {/* Top Customers Table con información adicional */}
       <Card className="p-6">
         <h3 className="text-lg font-medium mb-4">Clientes Principales</h3>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
+              <TableHead>Contacto</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Última Compra</TableHead>
               <TableHead>Total Gastado</TableHead>
@@ -239,48 +271,90 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
             </TableRow>
           </TableHeader>
           <TableBody>
-            {topCustomers.map((customer) => (
-              <TableRow key={customer.id}>
-                <TableCell className="font-medium">
-                  {customer.name}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="capitalize">
-                    {customer.type}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    {new Date(customer.lastPurchase).toLocaleDateString()}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    ${customer.totalSpent.toLocaleString()}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {customer.purchaseCount} compras
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={customer.status === "active" ? "default" : "secondary"}
-                    className={
-                      customer.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }
-                  >
-                    {customer.status === "active" ? "Activo" : "Inactivo"}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
+            {data.topCustomers
+              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+              .map((customer) => (
+                <TableRow key={customer._id}>
+                  <TableCell className="font-medium">
+                    {customer.name}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col text-sm">
+                      {customer.email && <span>{customer.email}</span>}
+                      {customer.phone && <span>{customer.phone}</span>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize">
+                      {customer.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      {customer.lastPurchase 
+                        ? new Date(customer.lastPurchase).toLocaleDateString()
+                        : "Sin compras"}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      ${customer.totalSpent?.toLocaleString() || 0}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {customer.purchaseCount || 0} compras
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={customer.status === "active" ? "default" : "secondary"}
+                      className={
+                        customer.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : customer.status === "inactive"
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }
+                    >
+                      {customer.status === "active" 
+                        ? "Activo" 
+                        : customer.status === "inactive"
+                        ? "Inactivo"
+                        : "Sin compras"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
+
+        {/* Agregar controles de paginación */}
+        <div className="flex items-center justify-between mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Anterior
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            Página {currentPage} de {Math.ceil(data.topCustomers.length / itemsPerPage)}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(data.topCustomers.length / itemsPerPage), p + 1))}
+            disabled={currentPage === Math.ceil(data.topCustomers.length / itemsPerPage)}
+          >
+            Siguiente
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
       </Card>
+
     </div>
   );
 }

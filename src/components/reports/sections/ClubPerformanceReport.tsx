@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Store, TrendingUp, TrendingDown, Crown, Users, DollarSign, Star, ArrowRight } from "lucide-react";
+import  api  from "@/services/api";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Props {
   selectedClub: string;
@@ -13,71 +15,80 @@ interface Props {
   };
 }
 
-// Mock data
-const clubsData = [
-  {
-    id: "1",
-    name: "Club FitZone",
-    image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=400&fit=crop",
-    totalSales: 85000,
-    totalProfit: 35000,
-    employeesCount: 12,
-    clientsCount: 250,
-    rating: 4.8,
-    performance: {
-      sales: {
-        current: 85000,
-        previous: 75000,
-      },
-      profit: {
-        current: 35000,
-        previous: 30000,
-      },
-      clients: {
-        current: 250,
-        previous: 220,
-      },
-    },
-    topProducts: [
-      { name: "Fórmula 1", sales: 150 },
-      { name: "Proteína", sales: 120 },
-      { name: "Té Verde", sales: 90 },
-    ],
-  },
-  {
-    id: "2",
-    name: "Club VitaFit",
-    image: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=800&h=400&fit=crop",
-    totalSales: 95000,
-    totalProfit: 40000,
-    employeesCount: 15,
-    clientsCount: 300,
-    rating: 4.9,
-    performance: {
-      sales: {
-        current: 95000,
-        previous: 82000,
-      },
-      profit: {
-        current: 40000,
-        previous: 35000,
-      },
-      clients: {
-        current: 300,
-        previous: 260,
-      },
-    },
-    topProducts: [
-      { name: "Proteína", sales: 180 },
-      { name: "Fórmula 1", sales: 130 },
-      { name: "Batido", sales: 100 },
-    ],
-  },
-];
+interface ClubData {
+  id: string;
+  name: string;
+  image: string;
+  totalSales: number;
+  totalProfit: number;
+  employeesCount: number;
+  clientsCount: number;
+  rating: number;
+  performance: {
+    sales: {
+      current: number;
+      previous: number;
+    };
+    profit: {
+      current: number;
+      previous: number;
+    };
+    clients: {
+      current: number;
+      previous: number;
+    };
+  };
+  topProducts: Array<{
+    name: string;
+    sales: number;
+  }>;
+}
 
 export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange }: Props) {
-  const [selectedClubId, setSelectedClubId] = useState<string>(clubsData[0].id);
-  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [clubsData, setClubsData] = useState<ClubData[]>([]);
+  const [selectedClubId, setSelectedClubId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchClubPerformance = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get<ClubData[]>('/reports/club-performance', {
+          params: {
+            period: selectedPeriod,
+            startDate: dateRange.start,
+            endDate: dateRange.end
+          }
+        });
+        setClubsData(response.data);
+        if (response.data.length > 0) {
+          setSelectedClubId(response.data[0].id);
+        }
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching club performance:', err);
+        setError(err.response?.data?.message || 'Error al cargar datos de rendimiento');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClubPerformance();
+  }, [selectedPeriod, dateRange]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-96">Cargando...</div>;
+  }
+
+  if (error || clubsData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96 text-red-500">
+        {error || 'No hay datos disponibles'}
+      </div>
+    );
+  }
+
   const selectedClubData = clubsData.find(club => club.id === selectedClubId);
   const leaderClub = clubsData.reduce((prev, current) => 
     (current.totalSales > prev.totalSales) ? current : prev
@@ -86,31 +97,40 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
   if (!selectedClubData) return null;
 
   const calculatePercentageChange = (current: number, previous: number) => {
+    // Si no hay valores previos o actuales, retornar 0
+    if (previous === 0 && current === 0) return 0;
+    // Si solo hay valor actual pero no previo, es un incremento del 100%
+    if (previous === 0) return current > 0 ? 100 : -100;
+    // Cálculo normal del porcentaje
     return ((current - previous) / previous) * 100;
+  };
+
+  const calculatePerformanceMetrics = (club: ClubData) => {
+    // Calcular métricas adicionales
+    const salesPerEmployee = club.employeesCount ? club.totalSales / club.employeesCount : 0;
+    const profitMargin = club.totalSales ? (club.totalProfit / club.totalSales) * 100 : 0;
+    const averageTicket = club.clientsCount ? club.totalSales / club.clientsCount : 0;
+
+    return {
+      salesPerEmployee,
+      profitMargin,
+      averageTicket
+    };
   };
 
   return (
     <div className="space-y-6">
-      {/* Club Cards */}
+      {/* Club Cards - Modificados sin imagen de fondo y estrellas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {clubsData.map((club) => (
           <div
             key={club.id}
-            className={`relative overflow-hidden rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-lg ${
+            className={`relative rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-lg ${
               selectedClubId === club.id ? 'ring-2 ring-primary' : ''
             }`}
             onClick={() => setSelectedClubId(club.id)}
           >
-            <div className="absolute inset-0">
-              <img
-                src={club.image}
-                alt={club.name}
-                className="w-full h-full object-cover opacity-20"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-background to-transparent"></div>
-            </div>
-            
-            <div className="relative p-6">
+            <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -144,20 +164,8 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <Star
-                      key={index}
-                      className={`h-4 w-4 ${
-                        index < Math.floor(club.rating)
-                          ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-300'
-                      }`}
-                    />
-                  ))}
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    {club.rating}
-                  </span>
+                <div className="text-sm text-muted-foreground">
+                  {club.clientsCount} clientes registrados
                 </div>
                 <ArrowRight className="h-5 w-5 text-primary" />
               </div>
@@ -166,153 +174,95 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
         ))}
       </div>
 
-      {/* Detailed Performance */}
+      {/* Métricas Principales - Modificadas y nuevas métricas */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="p-6">
           <h3 className="text-lg font-medium mb-4">Métricas Clave</h3>
           <div className="space-y-6">
-            {/* Sales Performance */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Ventas</span>
-                <div className="flex items-center gap-2">
-                  {calculatePercentageChange(
-                    selectedClubData.performance.sales.current,
-                    selectedClubData.performance.sales.previous
-                  ) > 0 ? (
-                    <>
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-green-500">
-                        +{calculatePercentageChange(
-                          selectedClubData.performance.sales.current,
-                          selectedClubData.performance.sales.previous
-                        ).toFixed(1)}%
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <TrendingDown className="h-4 w-4 text-red-500" />
-                      <span className="text-sm text-red-500">
-                        {calculatePercentageChange(
-                          selectedClubData.performance.sales.current,
-                          selectedClubData.performance.sales.previous
-                        ).toFixed(1)}%
-                      </span>
-                    </>
-                  )}
+            {selectedClubData && (
+              <>
+                {/* Ventas por Empleado */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Ventas por Empleado</span>
+                    <span className="text-sm font-medium">
+                      ${calculatePerformanceMetrics(selectedClubData).salesPerEmployee.toLocaleString()}
+                    </span>
+                  </div>
+                  <Progress
+                    value={(calculatePerformanceMetrics(selectedClubData).salesPerEmployee / 
+                           calculatePerformanceMetrics(leaderClub).salesPerEmployee) * 100}
+                    className="h-2"
+                  />
                 </div>
-              </div>
-              <Progress
-                value={
-                  (selectedClubData.performance.sales.current /
-                    leaderClub.performance.sales.current) *
-                  100
-                }
-                className="h-2"
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>${selectedClubData.performance.sales.current.toLocaleString()}</span>
-                <span>Meta: ${(selectedClubData.performance.sales.current * 1.2).toLocaleString()}</span>
-              </div>
-            </div>
 
-            {/* Profit Performance */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Ganancias</span>
-                <div className="flex items-center gap-2">
-                  {calculatePercentageChange(
-                    selectedClubData.performance.profit.current,
-                    selectedClubData.performance.profit.previous
-                  ) > 0 ? (
-                    <>
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-green-500">
-                        +{calculatePercentageChange(
-                          selectedClubData.performance.profit.current,
-                          selectedClubData.performance.profit.previous
-                        ).toFixed(1)}%
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <TrendingDown className="h-4 w-4 text-red-500" />
-                      <span className="text-sm text-red-500">
-                        {calculatePercentageChange(
-                          selectedClubData.performance.profit.current,
-                          selectedClubData.performance.profit.previous
-                        ).toFixed(1)}%
-                      </span>
-                    </>
-                  )}
+                {/* Margen de Beneficio */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Margen de Beneficio</span>
+                    <span className="text-sm font-medium">
+                      {calculatePerformanceMetrics(selectedClubData).profitMargin.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={calculatePerformanceMetrics(selectedClubData).profitMargin}
+                    className="h-2"
+                  />
                 </div>
-              </div>
-              <Progress
-                value={
-                  (selectedClubData.performance.profit.current /
-                    leaderClub.performance.profit.current) *
-                  100
-                }
-                className="h-2"
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>${selectedClubData.performance.profit.current.toLocaleString()}</span>
-                <span>Meta: ${(selectedClubData.performance.profit.current * 1.2).toLocaleString()}</span>
-              </div>
-            </div>
 
-            {/* Clients Growth */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Crecimiento de Clientes</span>
-                <div className="flex items-center gap-2">
-                  {calculatePercentageChange(
-                    selectedClubData.performance.clients.current,
-                    selectedClubData.performance.clients.previous
-                  ) > 0 ? (
-                    <>
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                      <span className="text-sm text-green-500">
-                        +{calculatePercentageChange(
+                {/* Ticket Promedio */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Ticket Promedio</span>
+                    <span className="text-sm font-medium">
+                      ${calculatePerformanceMetrics(selectedClubData).averageTicket.toLocaleString()}
+                    </span>
+                  </div>
+                  <Progress
+                    value={(calculatePerformanceMetrics(selectedClubData).averageTicket / 
+                           calculatePerformanceMetrics(leaderClub).averageTicket) * 100}
+                    className="h-2"
+                  />
+                </div>
+
+                {/* Tasa de Crecimiento de Clientes */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Crecimiento de Clientes</span>
+                    <div className="flex items-center gap-2">
+                      {calculatePercentageChange(
+                        selectedClubData.performance.clients.current,
+                        selectedClubData.performance.clients.previous
+                      ) > 0 ? (
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${
+                        calculatePercentageChange(
                           selectedClubData.performance.clients.current,
                           selectedClubData.performance.clients.previous
-                        ).toFixed(1)}%
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <TrendingDown className="h-4 w-4 text-red-500" />
-                      <span className="text-sm text-red-500">
+                        ) > 0 ? 'text-green-500' : 'text-red-500'
+                      }`}>
                         {calculatePercentageChange(
                           selectedClubData.performance.clients.current,
                           selectedClubData.performance.clients.previous
                         ).toFixed(1)}%
                       </span>
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <Progress
-                value={
-                  (selectedClubData.performance.clients.current /
-                    leaderClub.performance.clients.current) *
-                  100
-                }
-                className="h-2"
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{selectedClubData.performance.clients.current} clientes</span>
-                <span>Meta: {Math.round(selectedClubData.performance.clients.current * 1.2)}</span>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </Card>
 
+        {/* Productos Más Vendidos - Con más detalles */}
         <Card className="p-6">
           <h3 className="text-lg font-medium mb-4">Productos Más Vendidos</h3>
           <div className="space-y-4">
-            {selectedClubData.topProducts.map((product, index) => (
-              <div key={index} className="flex items-center gap-4">
+            {selectedClubData?.topProducts.map((product, index) => (
+              <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
                 <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
                   index === 0
                     ? 'bg-yellow-100 text-yellow-800'
@@ -332,15 +282,48 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
                     {product.sales} unidades vendidas
                   </div>
                 </div>
-                <Progress
-                  value={(product.sales / selectedClubData.topProducts[0].sales) * 100}
-                  className="w-24 h-2"
-                />
+                <div className="text-sm font-medium">
+                  {((product.sales / selectedClubData.topProducts[0].sales) * 100).toFixed(1)}%
+                </div>
               </div>
             ))}
           </div>
         </Card>
       </div>
+
+      {/* Nueva sección: Comparativa entre Clubs */}
+      <Card className="p-6">
+        <h3 className="text-lg font-medium mb-4">Comparativa entre Clubs</h3>
+        <div className="relative overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Club</TableHead>
+                <TableHead>Ventas</TableHead>
+                <TableHead>Ganancias</TableHead>
+                <TableHead>Margen</TableHead>
+                <TableHead>Clientes</TableHead>
+                <TableHead>Empleados</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clubsData.map((club) => {
+                const metrics = calculatePerformanceMetrics(club);
+                return (
+                  <TableRow key={club.id}>
+                    <TableCell className="font-medium">{club.name}</TableCell>
+                    <TableCell>${club.totalSales.toLocaleString()}</TableCell>
+                    <TableCell>${club.totalProfit.toLocaleString()}</TableCell>
+                    <TableCell>{metrics.profitMargin.toFixed(1)}%</TableCell>
+                    <TableCell>{club.clientsCount}</TableCell>
+                    <TableCell>{club.employeesCount}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 }

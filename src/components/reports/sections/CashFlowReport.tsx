@@ -156,55 +156,41 @@ export function CashFlowReport({ selectedClub, selectedPeriod, dateRange }: Prop
 
   const adjustToLocalTimezone = (dateString: string) => {
     const date = new Date(dateString);
-    // Ajustar a la zona horaria local (México UTC-6)
-    date.setHours(date.getHours() + 6);
-    return date;
+    return new Date(date.getTime() + (date.getTimezoneOffset() * 60000));
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-96">Cargando...</div>;
-  }
-
-  if (error || !data) {
-    return <div className="flex items-center justify-center h-96 text-red-500">{error}</div>;
-  }
-
-  // Calcular totales
-  const totalInflow = data.summary.totalInflow;
-  const totalOutflow = data.summary.totalOutflow;
-  const netCashFlow = data.summary.netCashFlow;
-
-  // Calcular saldo actual y proyección
-  const currentBalance = 5000; // Saldo actual (ejemplo)
-  const next7DaysOutflow = 1200; // Salidas estimadas próximos 7 días (ejemplo)
-
-  // Generar días del calendario
-  const daysOfWeek = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
-  // Función para obtener el día de la semana (0-6, donde 0 es lunes)
   const getDayOfWeek = (dateString: string) => {
     const date = new Date(dateString);
-    return (date.getDay() + 6) % 7; // Convertir 0=domingo a 0=lunes
+    // Ajustar a la zona horaria local de México
+    const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+    return localDate.getDay() || 7; // Convierte 0 (domingo) a 7, mantiene 1-6 igual
   };
 
   const generateCalendarData = () => {
     if (!data?.cashFlowData) return [];
     
     if (selectedPeriod === 'week') {
-      // Para vista semanal, solo mostrar los 7 días de la semana actual
       return [data.cashFlowData];
     } else {
-      // Para vista mensual, mantener la lógica actual de semanas
       const weeks: CashFlowDay[][] = [];
       let currentWeek: CashFlowDay[] = [];
       
-      // Encontrar el primer día del mes
+      // Encontrar el primer día del mes y ajustar a zona horaria local
       const firstDay = new Date(data.cashFlowData[0].date);
+      const localFirstDay = new Date(firstDay.getTime() + firstDay.getTimezoneOffset() * 60000);
       const firstDayOfWeek = getDayOfWeek(data.cashFlowData[0].date);
       
       // Rellenar días anteriores al primer día del mes
-      for (let i = 0; i < firstDayOfWeek; i++) {
-        currentWeek.push({ date: '', inflow: 0, outflow: 0, balance: 0, inflowCount: 0, outflowCount: 0, hasData: false });
+      for (let i = 0; i < firstDayOfWeek - 1; i++) {
+        currentWeek.push({ 
+          date: '', 
+          inflow: 0, 
+          outflow: 0, 
+          balance: 0, 
+          inflowCount: 0, 
+          outflowCount: 0, 
+          hasData: false 
+        });
       }
       
       // Agregar los días del mes
@@ -227,6 +213,26 @@ export function CashFlowReport({ selectedClub, selectedPeriod, dateRange }: Prop
       return weeks;
     }
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-96">Cargando...</div>;
+  }
+
+  if (error || !data) {
+    return <div className="flex items-center justify-center h-96 text-red-500">{error}</div>;
+  }
+
+  // Calcular totales
+  const totalInflow = data.summary.totalInflow;
+  const totalOutflow = data.summary.totalOutflow;
+  const netCashFlow = data.summary.netCashFlow;
+
+  // Calcular saldo actual y proyección
+  const currentBalance = 5000; // Saldo actual (ejemplo)
+  const next7DaysOutflow = 1200; // Salidas estimadas próximos 7 días (ejemplo)
+
+  // Generar días del calendario
+  const daysOfWeek = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   const weeks = generateCalendarData();
 
@@ -424,7 +430,8 @@ export function CashFlowReport({ selectedClub, selectedPeriod, dateRange }: Prop
                 }
 
                 const localDate = adjustToLocalTimezone(day.date);
-                const isToday = localDate.toDateString() === new Date().toDateString();
+                const today = new Date();
+                const isToday = localDate.toDateString() === today.toDateString();
                 const isSelected = selectedDay?.date === day.date;
 
                 return (
