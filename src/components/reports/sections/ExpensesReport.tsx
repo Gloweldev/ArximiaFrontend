@@ -4,8 +4,10 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { ShoppingBag, Building2, Zap, Users, Bookmark, TrendingDown, TrendingUp } from "lucide-react";
+import { ShoppingBag, Building2, Zap, Users, Bookmark, TrendingDown, TrendingUp, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "@/services/api";
+import { TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   selectedClub: string;
@@ -69,6 +71,8 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ExpenseData | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const fetchExpensesData = async () => {
@@ -131,8 +135,23 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
 
   return (
     <div className="space-y-6">
+      {/* Descripción de la sección */}
+      <Card className="p-4 bg-muted/50">
+        <div className="flex items-start gap-3">
+          <TrendingDown className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div>
+            <h3 className="font-medium mb-1">Reporte de Gastos</h3>
+            <p className="text-sm text-muted-foreground">
+              Monitorea y analiza todos los gastos del negocio por categoría.
+              Identifica las principales áreas de gasto y tendencias para optimizar
+              los costos operativos y mejorar la rentabilidad.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
         {/* Total Expenses Card */}
         <Card className="p-6 bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-red-200/50">
           <div className="flex flex-col gap-4">
@@ -203,10 +222,24 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
       </div>
 
       {/* Expenses Distribution */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="p-6">
-          <h3 className="text-lg font-medium mb-4">Distribución por Categoría</h3>
-          <div className="h-[300px]">
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+        <Card className="p-4 md:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium">Distribución por Categoría</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Visualización de la distribución de gastos por categoría.
+                     El gráfico muestra la proporción de cada tipo de gasto
+                     respecto al total.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="h-[300px] md:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -254,8 +287,21 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h3 className="text-lg font-medium mb-4">Resumen por Categoría</h3>
+        <Card className="p-4 md:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium">Resumen por Categoría</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Desglose detallado de gastos por categoría con porcentajes
+                     y barras de progreso para una comparación visual rápida.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="space-y-4">
             {data.categoryDistribution.map((category) => {
               const Icon = categoryIcons[category.name as keyof typeof categoryIcons] || Bookmark;
@@ -286,49 +332,98 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
       </div>
 
       {/* Top Expenses Table */}
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4">Gastos más Altos</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Descripción</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.topExpenses.map((expense) => {
-              const normalizedCategory = normalizeCategory(expense.category);
-              const Icon = categoryIcons[normalizedCategory as keyof typeof categoryIcons] || Bookmark;
-              
-              return (
-                <TableRow key={expense._id}>
-                  <TableCell className="font-medium">
-                    {expense.description}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {Icon && (
-                        <div className="p-1 rounded-lg" style={{ backgroundColor: `${categoryColors[normalizedCategory as keyof typeof categoryColors] || categoryColors.other}20` }}>
-                          <Icon className="h-4 w-4" style={{ color: categoryColors[normalizedCategory as keyof typeof categoryColors] || categoryColors.other }} />
+      <Card className="p-4 md:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium">Gastos más Altos</h3>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[300px]">
+                <p>Lista de los gastos más significativos ordenados por monto.
+                   Incluye detalles como categoría, fecha y descripción.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Descripción</TableHead>
+                <TableHead className="hidden sm:table-cell">Categoría</TableHead>
+                <TableHead className="hidden md:table-cell">Fecha</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.topExpenses
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((expense) => {
+                  const normalizedCategory = normalizeCategory(expense.category);
+                  const Icon = categoryIcons[normalizedCategory as keyof typeof categoryIcons] || Bookmark;
+                  
+                  return (
+                    <TableRow key={expense._id}>
+                      <TableCell className="font-medium">
+                        {expense.description}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <div className="flex items-center gap-2">
+                          {Icon && (
+                            <div className="p-1 rounded-lg" style={{ backgroundColor: `${categoryColors[normalizedCategory as keyof typeof categoryColors] || categoryColors.other}20` }}>
+                              <Icon className="h-4 w-4" style={{ color: categoryColors[normalizedCategory as keyof typeof categoryColors] || categoryColors.other }} />
+                            </div>
+                          )}
+                          {normalizedCategory}
                         </div>
-                      )}
-                      {normalizedCategory}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(expense.date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    ${expense.amount.toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {new Date(expense.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ${expense.amount.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+          <div className="text-sm text-muted-foreground order-2 sm:order-1">
+            Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+            {Math.min(currentPage * itemsPerPage, data.topExpenses.length)} de {data.topExpenses.length} gastos
+          </div>
+          <div className="flex items-center gap-2 order-1 sm:order-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Anterior
+            </Button>
+            <span className="text-sm">
+              Página {currentPage} de {Math.ceil(data.topExpenses.length / itemsPerPage)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(Math.ceil(data.topExpenses.length / itemsPerPage), p + 1))}
+              disabled={currentPage === Math.ceil(data.topExpenses.length / itemsPerPage)}
+            >
+              Siguiente
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
       </Card>
+
     </div>
   );
 }

@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Package, Coffee, User, Calendar, Search, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import { Package, Coffee, User, Calendar, Search, DollarSign, ChevronLeft, ChevronRight, History } from "lucide-react";
 import  api  from "@/services/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -115,74 +115,87 @@ export function TransactionHistoryReport({ selectedClub, selectedPeriod, dateRan
 
   return (
     <div className="space-y-6">
-      {/* Filtros */}
-      <Card className="p-6">
-        <div className="space-y-4">
+      {/* Descripción de la sección */}
+      <Card className="p-4 bg-muted/50">
+        <div className="flex items-start gap-3">
+          <History className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div>
+            <h3 className="font-medium mb-1">Historial de Movimientos</h3>
+            <p className="text-sm text-muted-foreground">
+              Accede al registro completo de todas las transacciones realizadas. Filtra y analiza
+              movimientos por tipo, fecha, monto y responsable para mantener un control detallado
+              de la operación del negocio.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Filtros con diseño responsive mejorado */}
+      <Card className="p-4 md:p-6">
+        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {/* Primera fila de filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Búsqueda</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por descripción..."
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Tipo de Movimiento</Label>
-              <Select value={tipoMovimiento} onValueChange={setTipoMovimiento}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo de movimiento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos los movimientos</SelectItem>
-                  <SelectItem value="venta">Ventas</SelectItem>
-                  <SelectItem value="gasto">Gastos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Responsable</Label>
+          <div className="space-y-2">
+            <Label>Búsqueda</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por responsable..."
-                value={responsable}
-                onChange={(e) => setResponsable(e.target.value)}
+                placeholder="Buscar por descripción..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="pl-9"
               />
             </div>
           </div>
 
-          <Separator className="my-4" />
-
-          {/* Segunda fila para rango de montos */}
           <div className="space-y-2">
-            <Label>Rango de Montos</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  placeholder="Monto mínimo"
-                  value={montoMin}
-                  onChange={(e) => setMontoMin(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  placeholder="Monto máximo"
-                  value={montoMax}
-                  onChange={(e) => setMontoMax(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+            <Label>Tipo de Movimiento</Label>
+            <Select value={tipoMovimiento} onValueChange={setTipoMovimiento}>
+              <SelectTrigger>
+                <SelectValue placeholder="Tipo de movimiento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los movimientos</SelectItem>
+                <SelectItem value="venta">Ventas</SelectItem>
+                <SelectItem value="gasto">Gastos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Responsable</Label>
+            <Input
+              placeholder="Buscar por responsable..."
+              value={responsable}
+              onChange={(e) => setResponsable(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Separator className="my-4" />
+
+        {/* Segunda fila para rango de montos */}
+        <div className="space-y-2">
+          <Label>Rango de Montos</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="number"
+                placeholder="Monto mínimo"
+                value={montoMin}
+                onChange={(e) => setMontoMin(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="number"
+                placeholder="Monto máximo"
+                value={montoMax}
+                onChange={(e) => setMontoMax(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </div>
         </div>
@@ -204,138 +217,142 @@ export function TransactionHistoryReport({ selectedClub, selectedPeriod, dateRan
           </div>
         )}
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Descripción</TableHead>
-              <TableHead>Responsable</TableHead>
-              <TableHead className="text-right w-[180px]">Monto</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data?.movimientos.map((movimiento) => (
-              <React.Fragment key={movimiento._id}>
-                <TableRow 
-                  className={cn(
-                    "cursor-pointer hover:bg-muted/50",
-                    movimiento.tipo === 'venta' && "group",
-                    expandedMovimiento === movimiento._id && "bg-muted/30"
-                  )}
-                  onClick={() => movimiento.tipo === 'venta' && toggleExpand(movimiento._id)}
-                >
-                  <TableCell>
-                    {new Date(movimiento.fecha).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={movimiento.tipo === 'venta' ? 'default' : 'destructive'}
-                      className={
-                        movimiento.tipo === 'venta'
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }
-                    >
-                      {movimiento.tipo === 'venta' ? 'Venta' : 'Gasto'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {movimiento.tipo === 'venta' ? (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm">
-                          {movimiento.itemGroups?.map(group => {
-                            const productNames = group.items.map(item => item.name).join(', ');
-                            return `${group.name} - ${productNames}`;
-                          }).join(' | ')}
-                        </span>
-                        <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                          Click para ver más detalles →
-                        </span>
-                      </div>
-                    ) : (
-                      movimiento.descripcion
-                    )}
-                  </TableCell>
-                  <TableCell>{movimiento.responsable.nombre}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    <span className={movimiento.tipo === 'venta' ? 'text-green-600' : 'text-red-600'}>
-                      {movimiento.tipo === 'venta' ? '+' : '-'}${Math.abs(movimiento.monto).toLocaleString()}
-                    </span>
-                  </TableCell>
+        <div className="overflow-auto">
+          <div className="min-w-[900px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[120px]">Fecha</TableHead>
+                  <TableHead className="w-[100px]">Tipo</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead className="w-[150px]">Responsable</TableHead>
+                  <TableHead className="text-right w-[120px]">Monto</TableHead>
                 </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data?.movimientos.map((movimiento) => (
+                  <React.Fragment key={movimiento._id}>
+                    <TableRow 
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/50",
+                        movimiento.tipo === 'venta' && "group",
+                        expandedMovimiento === movimiento._id && "bg-muted/30"
+                      )}
+                      onClick={() => movimiento.tipo === 'venta' && toggleExpand(movimiento._id)}
+                    >
+                      <TableCell>
+                        {new Date(movimiento.fecha).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={movimiento.tipo === 'venta' ? 'default' : 'destructive'}
+                          className={
+                            movimiento.tipo === 'venta'
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }
+                        >
+                          {movimiento.tipo === 'venta' ? 'Venta' : 'Gasto'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {movimiento.tipo === 'venta' ? (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm">
+                              {movimiento.itemGroups?.map(group => {
+                                const productNames = group.items.map(item => item.name).join(', ');
+                                return `${group.name} - ${productNames}`;
+                              }).join(' | ')}
+                            </span>
+                            <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                              Click para ver más detalles →
+                            </span>
+                          </div>
+                        ) : (
+                          movimiento.descripcion
+                        )}
+                      </TableCell>
+                      <TableCell>{movimiento.responsable.nombre}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <span className={movimiento.tipo === 'venta' ? 'text-green-600' : 'text-red-600'}>
+                          {movimiento.tipo === 'venta' ? '+' : '-'}${Math.abs(movimiento.monto).toLocaleString()}
+                        </span>
+                      </TableCell>
+                    </TableRow>
 
-                {/* Detalles expandibles - mantener el código existente */}
-                {movimiento.tipo === 'venta' && expandedMovimiento === movimiento._id && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="p-0 border-t-0">
-                      <div className="p-4 space-y-4 bg-muted/5">
-                        {movimiento.itemGroups?.map((group, groupIndex) => (
-                          <div key={groupIndex} className="rounded-lg bg-background border p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="text-base font-semibold text-primary">
-                                {group.name}
-                              </h4>
-                              <span className="text-sm font-medium tabular-nums">
-                                Subtotal: ${group.subtotal.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="space-y-2">
-                              {group.items.map((item, itemIndex) => (
-                                <div 
-                                  key={itemIndex}
-                                  className="grid grid-cols-4 items-center text-sm py-2 border-b last:border-0"
-                                >
-                                  <span className="col-span-2 font-medium">{item.name}</span>
-                                  <span className="text-muted-foreground tabular-nums">
-                                    {item.quantity} × ${item.unit_price.toLocaleString()}
-                                  </span>
-                                  <span className="text-right tabular-nums">
-                                    ${item.subtotal.toLocaleString()}
+                    {/* Detalles expandibles - mantener el código existente */}
+                    {movimiento.tipo === 'venta' && expandedMovimiento === movimiento._id && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="p-0 border-t-0">
+                          <div className="p-4 space-y-4 bg-muted/5">
+                            {movimiento.itemGroups?.map((group, groupIndex) => (
+                              <div key={groupIndex} className="rounded-lg bg-background border p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="text-base font-semibold text-primary">
+                                    {group.name}
+                                  </h4>
+                                  <span className="text-sm font-medium tabular-nums">
+                                    Subtotal: ${group.subtotal.toLocaleString()}
                                   </span>
                                 </div>
-                              ))}
+                                <div className="space-y-2">
+                                  {group.items.map((item, itemIndex) => (
+                                    <div 
+                                      key={itemIndex}
+                                      className="grid grid-cols-4 items-center text-sm py-2 border-b last:border-0"
+                                    >
+                                      <span className="col-span-2 font-medium">{item.name}</span>
+                                      <span className="text-muted-foreground tabular-nums">
+                                        {item.quantity} × ${item.unit_price.toLocaleString()}
+                                      </span>
+                                      <span className="text-right tabular-nums">
+                                        ${item.subtotal.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                            <div className="flex justify-end">
+                              <span className="text-sm text-muted-foreground tabular-nums">
+                                Total de la venta: ${movimiento.monto.toLocaleString()}
+                              </span>
                             </div>
                           </div>
-                        ))}
-                        <div className="flex justify-end">
-                          <span className="text-sm text-muted-foreground tabular-nums">
-                            Total de la venta: ${movimiento.monto.toLocaleString()}
-                          </span>
-                        </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))}
+
+                {/* Mostrar mensaje cuando no hay resultados */}
+                {data?.movimientos.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <p>No se encontraron movimientos</p>
+                        {busqueda && (
+                          <p className="text-sm">
+                            Intenta con otros términos de búsqueda
+                          </p>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
-              </React.Fragment>
-            ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
 
-            {/* Mostrar mensaje cuando no hay resultados */}
-            {data?.movimientos.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                    <p>No se encontraron movimientos</p>
-                    {busqueda && (
-                      <p className="text-sm">
-                        Intenta con otros términos de búsqueda
-                      </p>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-
-        {/* Controles de Paginación */}
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-muted-foreground">
+        {/* Ajuste en la paginación para móviles */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+          <div className="text-sm text-muted-foreground order-2 sm:order-1">
             Mostrando {((data?.paginacion.paginaActual || 1) - 1) * 10 + 1} a{" "}
             {Math.min((data?.paginacion.paginaActual || 1) * 10, data?.paginacion.total || 0)} de{" "}
             {data?.paginacion.total || 0} movimientos
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 order-1 sm:order-2">
             <Button
               variant="outline"
               size="sm"

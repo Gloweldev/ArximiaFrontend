@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Store, TrendingUp, TrendingDown, Crown, Users, DollarSign, Star, ArrowRight } from "lucide-react";
+import { Store, TrendingUp, TrendingDown, Crown, Users, DollarSign, Star, ArrowRight, Calendar, Package } from "lucide-react";
 import  api  from "@/services/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -105,22 +105,34 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
     return ((current - previous) / previous) * 100;
   };
 
+  // Modificar la función calculatePerformanceMetrics
   const calculatePerformanceMetrics = (club: ClubData) => {
-    // Calcular métricas adicionales
-    const salesPerEmployee = club.employeesCount ? club.totalSales / club.employeesCount : 0;
-    const profitMargin = club.totalSales ? (club.totalProfit / club.totalSales) * 100 : 0;
-    const averageTicket = club.clientsCount ? club.totalSales / club.clientsCount : 0;
-
     return {
-      salesPerEmployee,
-      profitMargin,
-      averageTicket
+      totalSales: club.totalSales,
+      profitMargin: club.totalSales > 0 ? ((club.totalProfit / club.totalSales) * 100) : 0,
+      averageTicketDaily: club.totalSales / 30,
+      actualProfit: club.totalProfit // Usar el valor real de ganancias
     };
   };
 
   return (
     <div className="space-y-6">
-      {/* Club Cards - Modificados sin imagen de fondo y estrellas */}
+      {/* Descripción de la sección */}
+      <Card className="p-4 bg-muted/50">
+        <div className="flex items-start gap-3">
+          <Store className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div>
+            <h3 className="font-medium mb-1">Desempeño por Club</h3>
+            <p className="text-sm text-muted-foreground">
+              Analiza el rendimiento individual de cada club, comparando métricas clave como ventas,
+              ganancias, eficiencia de empleados y satisfacción de clientes. Identifica las mejores
+              prácticas y áreas de oportunidad entre locaciones.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Ajuste en las tarjetas de club */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {clubsData.map((club) => (
           <div
@@ -138,9 +150,8 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg">{club.name}</h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      {club.employeesCount} empleados
+                    <div className="text-sm text-muted-foreground">
+                      {club.clientsCount} clientes registrados
                     </div>
                   </div>
                 </div>
@@ -152,7 +163,7 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-muted-foreground">Ventas Totales</div>
                   <div className="text-2xl font-bold">${club.totalSales.toLocaleString()}</div>
@@ -162,166 +173,157 @@ export function ClubPerformanceReport({ selectedClub, selectedPeriod, dateRange 
                   <div className="text-2xl font-bold">${club.totalProfit.toLocaleString()}</div>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  {club.clientsCount} clientes registrados
-                </div>
-                <ArrowRight className="h-5 w-5 text-primary" />
-              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Métricas Principales - Modificadas y nuevas métricas */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Ajuste en las métricas principales */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <Card className="p-6">
-          <h3 className="text-lg font-medium mb-4">Métricas Clave</h3>
-          <div className="space-y-6">
+          <h3 className="text-lg font-medium mb-6">Métricas Clave</h3>
+          <div className="grid gap-8">
             {selectedClubData && (
               <>
-                {/* Ventas por Empleado */}
-                <div className="space-y-2">
+                {/* Ventas Totales */}
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Ventas por Empleado</span>
-                    <span className="text-sm font-medium">
-                      ${calculatePerformanceMetrics(selectedClubData).salesPerEmployee.toLocaleString()}
-                    </span>
+                    <div className="space-y-1">
+                      <span className="text-sm font-medium text-muted-foreground">Ventas Totales</span>
+                      <div className="text-2xl font-bold">
+                        ${selectedClubData.totalSales.toLocaleString()}
+                      </div>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-primary opacity-20" />
                   </div>
                   <Progress
-                    value={(calculatePerformanceMetrics(selectedClubData).salesPerEmployee / 
-                           calculatePerformanceMetrics(leaderClub).salesPerEmployee) * 100}
+                    value={(selectedClubData.totalSales / leaderClub.totalSales) * 100}
                     className="h-2"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {((selectedClubData.totalSales / leaderClub.totalSales) * 100).toFixed(1)}% respecto al líder
+                  </p>
                 </div>
 
-                {/* Margen de Beneficio */}
-                <div className="space-y-2">
+                {/* Margen de Beneficio (usando la ganancia real) */}
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Margen de Beneficio</span>
-                    <span className="text-sm font-medium">
-                      {calculatePerformanceMetrics(selectedClubData).profitMargin.toFixed(1)}%
-                    </span>
+                    <div className="space-y-1">
+                      <span className="text-sm font-medium text-muted-foreground">Ganancias</span>
+                      <div className="text-2xl font-bold">
+                        ${selectedClubData.totalProfit.toLocaleString()}
+                      </div>
+                    </div>
+                    <TrendingUp className="h-8 w-8 text-green-500 opacity-20" />
                   </div>
                   <Progress
                     value={calculatePerformanceMetrics(selectedClubData).profitMargin}
                     className="h-2"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {calculatePerformanceMetrics(selectedClubData).profitMargin.toFixed(1)}% margen sobre ventas
+                  </p>
                 </div>
 
-                {/* Ticket Promedio */}
-                <div className="space-y-2">
+                {/* Promedio Diario */}
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Ticket Promedio</span>
-                    <span className="text-sm font-medium">
-                      ${calculatePerformanceMetrics(selectedClubData).averageTicket.toLocaleString()}
-                    </span>
+                    <div className="space-y-1">
+                      <span className="text-sm font-medium text-muted-foreground">Promedio Diario</span>
+                      <div className="text-2xl font-bold">
+                        ${calculatePerformanceMetrics(selectedClubData).averageTicketDaily.toLocaleString()}
+                      </div>
+                    </div>
+                    <Calendar className="h-8 w-8 text-blue-500 opacity-20" />
                   </div>
                   <Progress
-                    value={(calculatePerformanceMetrics(selectedClubData).averageTicket / 
-                           calculatePerformanceMetrics(leaderClub).averageTicket) * 100}
+                    value={(calculatePerformanceMetrics(selectedClubData).averageTicketDaily / 
+                           calculatePerformanceMetrics(leaderClub).averageTicketDaily) * 100}
                     className="h-2"
                   />
-                </div>
-
-                {/* Tasa de Crecimiento de Clientes */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Crecimiento de Clientes</span>
-                    <div className="flex items-center gap-2">
-                      {calculatePercentageChange(
-                        selectedClubData.performance.clients.current,
-                        selectedClubData.performance.clients.previous
-                      ) > 0 ? (
-                        <TrendingUp className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 text-red-500" />
-                      )}
-                      <span className={`text-sm ${
-                        calculatePercentageChange(
-                          selectedClubData.performance.clients.current,
-                          selectedClubData.performance.clients.previous
-                        ) > 0 ? 'text-green-500' : 'text-red-500'
-                      }`}>
-                        {calculatePercentageChange(
-                          selectedClubData.performance.clients.current,
-                          selectedClubData.performance.clients.previous
-                        ).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Promedio de ventas por día del período
+                  </p>
                 </div>
               </>
             )}
           </div>
         </Card>
 
-        {/* Productos Más Vendidos - Con más detalles */}
+        {/* Productos Más Vendidos - Con porcentajes corregidos */}
         <Card className="p-6">
           <h3 className="text-lg font-medium mb-4">Productos Más Vendidos</h3>
           <div className="space-y-4">
-            {selectedClubData?.topProducts.map((product, index) => (
-              <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                  index === 0
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : index === 1
-                    ? 'bg-gray-100 text-gray-800'
-                    : 'bg-orange-100 text-orange-800'
-                }`}>
-                  {index === 0 ? (
-                    <Crown className="h-5 w-5" />
-                  ) : (
-                    <DollarSign className="h-5 w-5" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium">{product.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {product.sales} unidades vendidas
+            {selectedClubData?.topProducts.map((product, index) => {
+              // Calcular el total de ventas de todos los productos
+              const totalSales = selectedClubData.topProducts.reduce((sum, p) => sum + p.sales, 0);
+              // Calcular el porcentaje de este producto
+              const percentage = (product.sales / totalSales) * 100;
+              
+              return (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                  <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                    index === 0
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : index === 1
+                      ? 'bg-gray-100 text-gray-800'
+                      : 'bg-orange-100 text-orange-800'
+                  }`}>
+                    {index === 0 ? (
+                      <Crown className="h-5 w-5" />
+                    ) : (
+                      <Package className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">{product.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {product.sales} unidades vendidas
+                    </div>
+                  </div>
+                  <div className="text-sm font-medium">
+                    {percentage.toFixed(1)}%
                   </div>
                 </div>
-                <div className="text-sm font-medium">
-                  {((product.sales / selectedClubData.topProducts[0].sales) * 100).toFixed(1)}%
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
 
-      {/* Nueva sección: Comparativa entre Clubs */}
+      {/* Ajuste en la tabla comparativa */}
       <Card className="p-6">
         <h3 className="text-lg font-medium mb-4">Comparativa entre Clubs</h3>
-        <div className="relative overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Club</TableHead>
-                <TableHead>Ventas</TableHead>
-                <TableHead>Ganancias</TableHead>
-                <TableHead>Margen</TableHead>
-                <TableHead>Clientes</TableHead>
-                <TableHead>Empleados</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clubsData.map((club) => {
-                const metrics = calculatePerformanceMetrics(club);
-                return (
-                  <TableRow key={club.id}>
-                    <TableCell className="font-medium">{club.name}</TableCell>
-                    <TableCell>${club.totalSales.toLocaleString()}</TableCell>
-                    <TableCell>${club.totalProfit.toLocaleString()}</TableCell>
-                    <TableCell>{metrics.profitMargin.toFixed(1)}%</TableCell>
-                    <TableCell>{club.clientsCount}</TableCell>
-                    <TableCell>{club.employeesCount}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <div className="overflow-auto">
+          <div className="min-w-[800px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Club</TableHead>
+                  <TableHead>Ventas</TableHead>
+                  <TableHead>Ganancias</TableHead>
+                  <TableHead>Margen</TableHead>
+                  <TableHead>Clientes</TableHead>
+                  <TableHead>Empleados</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {clubsData.map((club) => {
+                  const metrics = calculatePerformanceMetrics(club);
+                  return (
+                    <TableRow key={club.id}>
+                      <TableCell className="font-medium">{club.name}</TableCell>
+                      <TableCell>${club.totalSales.toLocaleString()}</TableCell>
+                      <TableCell>${club.totalProfit.toLocaleString()}</TableCell>
+                      <TableCell>{metrics.profitMargin.toFixed(1)}%</TableCell>
+                      <TableCell>{club.clientsCount}</TableCell>
+                      <TableCell>{club.employeesCount}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </Card>
     </div>

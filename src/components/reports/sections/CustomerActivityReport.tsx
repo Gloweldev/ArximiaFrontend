@@ -4,9 +4,10 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, TrendingUp, TrendingDown, User, Calendar, DollarSign, RotateCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, TrendingUp, TrendingDown, User, Calendar, DollarSign, RotateCw, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import  api  from "@/services/api";
 import { Button } from "@/components/ui/button";
+import { TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface Props {
   selectedClub: string;
@@ -94,8 +95,23 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
 
   return (
     <div className="space-y-6">
+      {/* Descripción de la sección */}
+      <Card className="p-4 bg-muted/50">
+        <div className="flex items-start gap-3">
+          <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div>
+            <h3 className="font-medium mb-1">Actividad de Clientes</h3>
+            <p className="text-sm text-muted-foreground">
+              Analiza el comportamiento y tendencias de tus clientes, incluyendo frecuencia de compra,
+              ticket promedio y patrones de actividad. Esta información te ayudará a identificar
+              clientes leales y oportunidades de mejora en tu servicio.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Customers */}
         <Card className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <div className="flex flex-col gap-4">
@@ -177,157 +193,188 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
         </Card>
       </div>
 
-      {/* Customer Trend Chart - con diseño mejorado */}
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4">Tendencia de Clientes</h3>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.trend}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis
-                dataKey="month"
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => {
-                  const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 
-                                    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                  return monthNames[value - 1];
-                }}
-              />
-              <YAxis
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-                    return (
-                      <div className="rounded-lg border bg-background p-2 shadow-sm">
-                        <div className="grid gap-2">
-                          <div className="flex flex-col">
-                            <span className="text-[0.70rem] uppercase text-muted-foreground">
-                              {monthNames[label - 1]}
-                            </span>
-                          </div>
-                          {payload.map((entry) => (
-                            <div key={entry.name} className="flex flex-col">
+      {/* Customer Trend Chart */}
+      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1">
+        <Card className="p-4 md:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium">Tendencia de Clientes</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Este gráfico muestra la evolución de clientes activos y nuevos a lo largo del tiempo.
+                     Los clientes activos son aquellos que han realizado compras en el período,
+                     mientras que los nuevos son los recién registrados.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="h-[300px] md:h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.trend}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="month"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 
+                                      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                    return monthNames[value - 1];
+                  }}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-sm">
+                          <div className="grid gap-2">
+                            <div className="flex flex-col">
                               <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                {entry.name === "active" ? "Con Compras" : "Nuevos"}
-                              </span>
-                              <span className="font-bold">
-                                {entry.value}
+                                {monthNames[label - 1]}
                               </span>
                             </div>
-                          ))}
+                            {payload.map((entry) => (
+                              <div key={entry.name} className="flex flex-col">
+                                <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                  {entry.name === "active" ? "Con Compras" : "Nuevos"}
+                                </span>
+                                <span className="font-bold">
+                                  {entry.value}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="active"
-                name="Con Compras"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="new"
-                name="Nuevos"
-                stroke="#22c55e"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="active"
+                  name="Con Compras"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="new"
+                  name="Nuevos"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
 
-      {/* Top Customers Table con información adicional */}
-      <Card className="p-6">
-        <h3 className="text-lg font-medium mb-4">Clientes Principales</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Contacto</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Última Compra</TableHead>
-              <TableHead>Total Gastado</TableHead>
-              <TableHead>Compras</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.topCustomers
-              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-              .map((customer) => (
-                <TableRow key={customer._id}>
-                  <TableCell className="font-medium">
-                    {customer.name}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-sm">
-                      {customer.email && <span>{customer.email}</span>}
-                      {customer.phone && <span>{customer.phone}</span>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {customer.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {customer.lastPurchase 
-                        ? new Date(customer.lastPurchase).toLocaleDateString()
-                        : "Sin compras"}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      ${customer.totalSpent?.toLocaleString() || 0}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {customer.purchaseCount || 0} compras
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={customer.status === "active" ? "default" : "secondary"}
-                      className={
-                        customer.status === "active"
-                          ? "bg-green-100 text-green-800"
+      {/* Top Customers Table */}
+      <Card className="p-4 md:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium">Clientes Principales</h3>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[300px]">
+                <p>Lista de los clientes más activos ordenados por volumen de compras.
+                   Incluye información detallada sobre su actividad y estado actual.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="hidden md:table-cell">Contacto</TableHead>
+                <TableHead className="hidden sm:table-cell">Tipo</TableHead>
+                <TableHead className="hidden lg:table-cell">Última Compra</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead className="hidden sm:table-cell">Compras</TableHead>
+                <TableHead>Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.topCustomers
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((customer) => (
+                  <TableRow key={customer._id}>
+                    <TableCell className="font-medium">
+                      {customer.name}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex flex-col text-sm">
+                        {customer.email && <span>{customer.email}</span>}
+                        {customer.phone && <span>{customer.phone}</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <Badge variant="outline" className="capitalize">
+                        {customer.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {customer.lastPurchase 
+                          ? new Date(customer.lastPurchase).toLocaleDateString()
+                          : "Sin compras"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        ${customer.totalSpent?.toLocaleString() || 0}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {customer.purchaseCount || 0} compras
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={customer.status === "active" ? "default" : "secondary"}
+                        className={
+                          customer.status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : customer.status === "inactive"
+                            ? "bg-gray-100 text-gray-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }
+                      >
+                        {customer.status === "active" 
+                          ? "Activo" 
                           : customer.status === "inactive"
-                          ? "bg-gray-100 text-gray-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }
-                    >
-                      {customer.status === "active" 
-                        ? "Activo" 
-                        : customer.status === "inactive"
-                        ? "Inactivo"
-                        : "Sin compras"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
+                          ? "Inactivo"
+                          : "Sin compras"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </div>
 
         {/* Agregar controles de paginación */}
         <div className="flex items-center justify-between mt-4">

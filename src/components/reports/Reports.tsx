@@ -117,7 +117,7 @@ export default function Reports() {
         </div>
 
         {/* Filtros */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
           {/* Club */}
           <div className="bg-card rounded-xl shadow-sm border p-4">
             <div className="flex items-center justify-between mb-2">
@@ -250,25 +250,31 @@ export default function Reports() {
         </div>
 
         {/* Tabs de reportes */}
-        <Card className="border-none shadow-xl">
+        <Card className="border-none shadow-xl overflow-hidden">
           <Tabs value={selectedReport} onValueChange={setSelectedReport} className="w-full">
-            <TabsList className="flex-wrap justify-start bg-muted/50 p-0 rounded-t-xl">
-              {[
-                { id: 'financial', name: 'Financiero' },
-                { id: 'club-performance', name: 'Desempeño por Club' },
-                { id: 'product-sales', name: 'Ventas por Producto' },
-                { id: 'expenses', name: 'Gastos' },
-                { id: 'cash-flow', name: 'Flujo de Caja' },
-                { id: 'inventory', name: 'Inventario' },
-                { id: 'customer-activity', name: 'Actividad de Clientes' },
-                { id: 'transaction-history', name: 'Historial de Movimientos' },
-              ].map(r => (
-                <TabsTrigger key={r.id} value={r.id} className="flex-1 py-3 data-[state=active]:bg-background">
-                  {r.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <div className="p-6">{renderReportContent()}</div>
+            <div className="overflow-x-auto">
+              <TabsList className="flex flex-nowrap min-w-max bg-muted/50 p-0 rounded-t-xl">
+                {[
+                  { id: 'financial', name: 'Financiero' },
+                  { id: 'club-performance', name: 'Desempeño por Club' },
+                  { id: 'product-sales', name: 'Ventas por Producto' },
+                  { id: 'expenses', name: 'Gastos' },
+                  { id: 'cash-flow', name: 'Flujo de Caja' },
+                  { id: 'inventory', name: 'Inventario' },
+                  { id: 'customer-activity', name: 'Actividad de Clientes' },
+                  { id: 'transaction-history', name: 'Historial de Movimientos' },
+                ].map(r => (
+                  <TabsTrigger 
+                    key={r.id}
+                    value={r.id} 
+                    className="flex-1 py-3 data-[state=active]:bg-background"
+                  >
+                    {r.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+            <div className="p-4 md:p-6">{renderReportContent()}</div>
           </Tabs>
         </Card>
       </div>

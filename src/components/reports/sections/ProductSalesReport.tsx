@@ -218,14 +218,33 @@ export function ProductSalesReport({ selectedClub, selectedPeriod, dateRange }: 
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Top Products Chart */}
-          <Card className="p-6">
-            <h3 className="text-lg font-medium mb-4">Top 10 Productos</h3>
-            <div className="h-[300px]">
+        {/* Descripción de la sección */}
+        <Card className="p-4 bg-muted/50">
+          <div className="flex items-start gap-3">
+            <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
+            <div>
+              <h3 className="font-medium mb-1">Ventas por Producto</h3>
+              <p className="text-sm text-muted-foreground">
+                Explora el rendimiento detallado de cada producto, identificando los más vendidos,
+                su rentabilidad y patrones de rotación. Optimiza tu inventario y estrategias de
+                venta basándote en datos concretos.
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Mejora del grid de gráficas */}
+        <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
+          {/* Top Products Chart - ajustado para mejor responsividad */}
+          <Card className="p-4 sm:p-6">
+            <h3 className="text-lg font-medium mb-6">Top 5 Productos</h3>
+            <div className="w-full min-h-[350px] h-[350px]">
               {data?.topProducts?.length ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.topProducts}>
+                  <BarChart
+                    data={data.topProducts}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 70 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
                       dataKey="name"
@@ -233,6 +252,9 @@ export function ProductSalesReport({ selectedClub, selectedPeriod, dateRange }: 
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={70}
                     />
                     <YAxis
                       stroke="hsl(var(--muted-foreground))"
@@ -249,9 +271,9 @@ export function ProductSalesReport({ selectedClub, selectedPeriod, dateRange }: 
             </div>
           </Card>
 
-          {/* Distribution Chart */}
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
+          {/* Distribution Chart - ajustado para mejor responsividad */}
+          <Card className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-medium">Distribución de Productos</h3>
                 <Tooltip>
@@ -281,14 +303,14 @@ export function ProductSalesReport({ selectedClub, selectedPeriod, dateRange }: 
                 </div>
               </RadioGroup>
             </div>
-            <div className="h-[300px]">
+            <div className="w-full min-h-[350px] h-[350px]">
               {getDistributionData().length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={getDistributionData()}
                       cx="50%"
-                      cy="50%"
+                      cy="45%"
                       innerRadius={60}
                       outerRadius={80}
                       fill="#8884d8"
@@ -300,11 +322,17 @@ export function ProductSalesReport({ selectedClub, selectedPeriod, dateRange }: 
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Legend 
+                    <Legend
+                      layout="horizontal"
+                      align="center"
+                      verticalAlign="bottom"
+                      wrapperStyle={{
+                        paddingTop: "20px"
+                      }}
                       formatter={(value) => (
-                        <div style={{ color: 'var(--foreground)', display: 'inline-block' }}>
+                        <span className="text-sm" style={{ color: 'var(--foreground)' }}>
                           {value}
-                        </div>
+                        </span>
                       )}
                     />
                     <RechartsTooltip content={<CustomPieTooltip active={undefined} payload={undefined} />} />

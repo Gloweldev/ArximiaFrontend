@@ -251,8 +251,23 @@ export function InventoryReport({ selectedClub, selectedPeriod, dateRange }: Pro
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Descripción de la sección */}
+      <Card className="p-4 bg-muted/50">
+        <div className="flex items-start gap-3">
+          <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div>
+            <h3 className="font-medium mb-1">Reporte de Inventario</h3>
+            <p className="text-sm text-muted-foreground">
+              Gestiona eficientemente tu inventario con información detallada sobre existencias,
+              rotación de productos y alertas de stock bajo. Mantén un control óptimo de tus
+              productos y prevé necesidades futuras de abastecimiento.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Rest of the existing code with responsive improvements */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Value Card */}
         <Card className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <div className="flex flex-col gap-4">

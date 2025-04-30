@@ -303,36 +303,23 @@ export function CashFlowReport({ selectedClub, selectedPeriod, dateRange }: Prop
 
   return (
     <div className="space-y-6">
-      {/* Header with Navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Calendar className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-medium">
-            {formatWeekHeader()}
-          </h3>
+      {/* Descripción de la sección */}
+      <Card className="p-4 bg-muted/50">
+        <div className="flex items-start gap-3">
+          <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div>
+            <h3 className="font-medium mb-1">Flujo de Caja</h3>
+            <p className="text-sm text-muted-foreground">
+              Visualiza el movimiento de efectivo diario, semanal y mensual. Monitorea entradas,
+              salidas y el balance neto para mantener una salud financiera óptima y tomar
+              decisiones informadas sobre gastos e inversiones.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handlePreviousMonth}
-            disabled={selectedPeriod === 'month'}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handleNextMonth}
-            disabled={selectedPeriod === 'month'}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      </Card>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Rest of the existing code with improved responsiveness */}
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
         {/* Inflows Card */}
         <Card className="p-6 bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200/50">
           <div className="flex flex-col gap-4">
