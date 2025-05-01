@@ -1,6 +1,6 @@
 // src/components/auth/Login.tsx
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,15 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { setActiveClub } = useClub(); // Actualizar el club activo en el estado global
+  const location = useLocation();
+
+  useEffect(() => {
+    // Verificar si llegamos desde una sesión expirada
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.get('expired') === 'true') {
+      setError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

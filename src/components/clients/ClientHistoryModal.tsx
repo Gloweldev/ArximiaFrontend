@@ -1,6 +1,6 @@
 // components/clients/ClientHistoryModal.tsx
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, DollarSign, ShoppingBag, Eye, PieChart, Info } from 'lucide-react';
+import { X, Calendar, DollarSign, ShoppingBag, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Client } from '../../types/clients';
 import { Sale } from '../../types/sales';
 import api from '@/services/api';
@@ -14,6 +14,8 @@ export default function ClientHistoryModal({ client, onClose }: Props) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     loadClientSales();
@@ -95,6 +97,26 @@ export default function ClientHistoryModal({ client, onClose }: Props) {
       const monthName = new Date(year, month - 1, 1).toLocaleDateString('es-MX', { month: 'short' });
       return { month: monthName, amount: value };
     });
+  };
+
+  const getCurrentPageData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sales.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(sales.length / itemsPerPage);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
   };
 
   const monthlyData = getMonthlySpending();
@@ -213,7 +235,7 @@ export default function ClientHistoryModal({ client, onClose }: Props) {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {sales.length > 0 ? (
-                  sales.map((sale) => (
+                  getCurrentPageData().map((sale) => (
                     <tr key={sale._id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(sale.created_at)}
@@ -221,7 +243,8 @@ export default function ClientHistoryModal({ client, onClose }: Props) {
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {sale.items?.slice(0, 2).map((item, index) => (
                           <div key={index}>
-                            {item.productName} x{item.quantity}
+                            {item.productName} 
+                            {item.flavor && item.flavor !== 'Sin sabor' && ` (${item.flavor})`} x{item.quantity}
                           </div>
                         ))}
                         {sale.items && sale.items.length > 2 && (
@@ -252,6 +275,39 @@ export default function ClientHistoryModal({ client, onClose }: Props) {
                 )}
               </tbody>
             </table>
+            
+            {/* Añadir controles de paginación */}
+            {sales.length > itemsPerPage && (
+              <div className="flex justify-center items-center space-x-4 mt-4">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className={`p-2 rounded ${
+                    currentPage === 1 
+                      ? 'text-gray-400 cursor-not-allowed' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                
+                <span className="text-sm text-gray-600">
+                  Página {currentPage} de {totalPages}
+                </span>
+
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className={`p-2 rounded ${
+                    currentPage === totalPages 
+                      ? 'text-gray-400 cursor-not-allowed' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -281,7 +337,10 @@ export default function ClientHistoryModal({ client, onClose }: Props) {
                     {selectedSale.items?.map((item, index) => (
                       <div key={index} className="flex justify-between">
                         <div>
-                          {item.productName} x{item.quantity}
+                          {item.productName}
+                          {item.flavor && item.flavor !== 'Sin sabor' && (
+                            <span className="text-gray-500"> ({item.flavor})</span>
+                          )} x{item.quantity}
                         </div>
                         <div>${(item.quantity * item.unit_price).toFixed(2)}</div>
                       </div>

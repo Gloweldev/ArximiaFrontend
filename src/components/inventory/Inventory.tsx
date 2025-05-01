@@ -53,7 +53,6 @@ import api from "@/services/api";
 import { RegisterInventoryModal } from "./modals/RegisterInventory";
 import { ProductDetailsModal } from "./modals/ProductDetails";
 import { MovementHistoryModal } from "./modals/MovementHistory";
-import { AdjustStockModal } from "./modals/AdjustStock";
 import { getTypeIcon, getStatusColor } from "./utils";
 
 export default function Inventory() {
@@ -64,7 +63,7 @@ export default function Inventory() {
       name: string;
       type: string;
       purchasePrice?: number;
-      status: string;
+      status: string | { sealed: string; preparation: string };
       flavor?: string;
     };
     sealed?: number;
@@ -83,12 +82,12 @@ export default function Inventory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { toast } = useToast();
+  const [idealStock] = useState(5); // Valor por defecto
 
   // Estados para modales
   const [showNewInventoryModal, setShowNewInventoryModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showAdjustStockModal, setShowAdjustStockModal] = useState(false);
 
   // Función para refrescar datos de inventario
   const refreshData = async () => {
@@ -96,6 +95,8 @@ export default function Inventory() {
       setLoading(true);
       if (activeClub) {
         const inventoryResponse = await api.get(`/inventory/club/${activeClub}`);
+        // Actualizar estados del inventario
+        await api.post(`/inventory/update-states/${activeClub}`);
         setInventory(inventoryResponse.data);
       }
     } catch (err) {
@@ -110,19 +111,58 @@ export default function Inventory() {
     refreshData();
   }, [activeClub]);
 
-  // Filtrar inventario según búsqueda y tab seleccionado
+  // Actualizar la función de filtrado
   const filteredInventory = inventory.filter((item) => {
     const product = item.product;
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    // Búsqueda mejorada para incluir nombre y sabor
+    const searchTermLower = searchTerm.toLowerCase();
+    const matchesSearch = product.name.toLowerCase().includes(searchTermLower) || 
+                         (product.flavor?.toLowerCase()?.includes(searchTermLower) || false);
+    
     let matchesTab = true;
-    if (selectedTab === "low") {
-      // Stock bajo: sellados o preparación con stock menor a 10
-      matchesTab = ((item.sealed ?? 0) < 10) || ((item.preparation?.currentPortions ?? 0) < 10);
-    } else if (selectedTab !== "all") {
-      matchesTab = product.type === selectedTab;
+    switch (selectedTab) {
+      case 'sealed':
+        matchesTab = product.type === 'sealed';
+        break;
+      case 'preparation':
+        matchesTab = product.type === 'prepared';
+        break;
+      case 'both':
+        matchesTab = product.type === 'both';
+        break;
+      case 'low':
+        // Revisar estados según el tipo de producto
+        if (typeof product.status === 'object') {
+          // Para productos tipo 'both', revisar ambos estados
+          matchesTab = product.status.sealed === 'low' || product.status.sealed === 'critical' ||
+                      product.status.preparation === 'low' || product.status.preparation === 'critical';
+        } else {
+          // Para productos simples
+          matchesTab = product.status === 'low' || product.status === 'critical';
+        }
+        break;
+      default: // 'all'
+        matchesTab = true;
     }
+
     return matchesSearch && matchesTab;
   });
+
+  // Actualizar los contadores para las pestañas
+  const counts = {
+    all: inventory.length,
+    sealed: inventory.filter(item => item.product.type === 'sealed').length,
+    preparation: inventory.filter(item => item.product.type === 'prepared').length,
+    both: inventory.filter(item => item.product.type === 'both').length,
+    low: inventory.filter(item => {
+      const status = item.product.status;
+      if (typeof status === 'object') {
+        return status.sealed === 'low' || status.sealed === 'critical' ||
+               status.preparation === 'low' || status.preparation === 'critical';
+      }
+      return status === 'low' || status === 'critical';
+    }).length
+  };
 
   // Calcular inversión total: se utiliza el precio de compra y la cantidad total de stock
   const totalInvestment = inventory.reduce((acc, item) => {
@@ -143,6 +183,54 @@ export default function Inventory() {
     // Implementa la exportación a Excel o PDF según sea necesario
   };
 
+  // Función para obtener el color del badge según el estado
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'critical':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      case 'low':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'normal':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    }
+  };
+
+  // Modificar la sección de la tabla donde se muestra el estado
+  const renderStatusBadge = (status: string | { sealed: string; preparation: string }, type: string = 'both') => {
+    const getStatusText = (s: string) => {
+      switch (s?.toLowerCase()) {
+        case 'critical': return 'Crítico';
+        case 'low': return 'Bajo';
+        case 'normal': return 'Normal';
+        default: return 'Desconocido';
+      }
+    };
+
+    if (typeof status === 'object' && type === 'both') {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge className={`${getStatusColor(status.sealed)}`}>
+            Sellado: {getStatusText(status.sealed)}
+          </Badge>
+          <Badge className={`${getStatusColor(status.preparation)}`}>
+            Prep: {getStatusText(status.preparation)}
+          </Badge>
+        </div>
+      );
+    }
+
+    const finalStatus = typeof status === 'string' ? status : 
+      (type === 'sealed' ? status.sealed : status.preparation);
+
+    return (
+      <Badge className={`${getStatusColor(finalStatus?.toLowerCase())}`}>
+        {getStatusText(finalStatus)}
+      </Badge>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
@@ -158,6 +246,114 @@ export default function Inventory() {
       </div>
     );
   }
+
+  const InventoryTable = ({ inventory }: { inventory: InventoryItem[] }) => (
+    <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-gray-200 dark:bg-gray-700">
+            <TableRow className="text-gray-700 dark:text-gray-200">
+              <TableHead className="w-[300px] px-4 py-2">Producto</TableHead>
+              <TableHead className="px-4 py-2">Tipo</TableHead>
+              <TableHead className="px-4 py-2">Stock Sellado</TableHead>
+              <TableHead className="px-4 py-2">Stock Preparación</TableHead>
+              <TableHead className="px-4 py-2">Última Actualización</TableHead>
+              <TableHead className="px-4 py-2">Estado</TableHead>
+              <TableHead className="px-4 py-2 text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {inventory.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-4">
+                  No hay productos que mostrar
+                </TableCell>
+              </TableRow>
+            ) : (
+              inventory.map((item) => {
+                const { product, sealed, preparation, updatedAt } = item;
+                return (
+                  <TableRow
+                    key={item._id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <TableCell className="font-medium px-4 py-2">
+                      {product.name}
+                      {product.flavor && ` (${product.flavor})`}
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        {getTypeIcon(product.type)}
+                        <span className="capitalize">
+                          {product.type === "sealed"
+                            ? "Sellado"
+                            : product.type === "prepared"
+                            ? "Preparación"
+                            : "Ambos"}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      {product.type === "prepared" ? "N/A" : (sealed ?? "N/A")} unidades
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      {product.type !== "sealed" ? (
+                        <div>
+                          <div>{preparation?.currentPortions ?? "N/A"} porciones</div>
+                          <div className="text-sm text-gray-500">
+                            ({preparation?.units ?? "N/A"} unidades)
+                          </div>
+                        </div>
+                      ) : (
+                        "N/A"
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      {new Date(updatedAt).toLocaleString() || "N/A"}
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      {renderStatusBadge(product.status, product.type)}
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 shadow-md">
+                          <DropdownMenuLabel className="px-4 py-2">Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            onClick={() => {
+                              setSelectedInventory(item);
+                              setShowDetailsModal(true);
+                            }}
+                          >
+                            Ver detalles
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            onClick={() => {
+                              setSelectedInventory(item);
+                              setShowHistoryModal(true);
+                            }}
+                          >
+                            Ver historial
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-purple-50/50 to-blue-50/50 dark:from-background dark:via-purple-950/5 dark:to-blue-950/5 p-4 md:p-6 lg:p-8">
@@ -232,27 +428,38 @@ export default function Inventory() {
 
         {/* Main Content */}
         <Card className="shadow-xl bg-white/90 dark:bg-neutral-900/50 backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle>Productos en Inventario</CardTitle>
-            <CardDescription>
-              Gestiona tus productos sellados y preparaciones
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Productos en Inventario</CardTitle>
+              <CardDescription>
+                Gestiona tus productos sellados y preparaciones
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-orange-50 dark:bg-orange-950/20 px-3 py-1.5 rounded-md border border-orange-200 dark:border-orange-800">
+              <ArrowUpDown className="h-4 w-4 text-orange-600" />
+              <span>Inventario ideal: <strong className="text-orange-600">{idealStock}</strong> unidades</span>
+            </div>
           </CardHeader>
+          
+          {/* Eliminar la card de Inventario Ideal de la sección de Stats Cards */}
           <CardContent>
             <Tabs defaultValue="all" className="space-y-4" onValueChange={setSelectedTab}>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <TabsList className="bg-gray-100 dark:bg-gray-800 w-full lg:w-auto rounded-md shadow-sm">
                   <TabsTrigger value="all" className="px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700">
-                    Todos
+                    Todos ({counts.all})
                   </TabsTrigger>
                   <TabsTrigger value="sealed" className="px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700">
-                    Sellados
+                    Sellados ({counts.sealed})
                   </TabsTrigger>
                   <TabsTrigger value="preparation" className="px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700">
-                    Preparaciones
+                    Preparaciones ({counts.preparation})
+                  </TabsTrigger>
+                  <TabsTrigger value="both" className="px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700">
+                    Ambos ({counts.both})
                   </TabsTrigger>
                   <TabsTrigger value="low" className="px-4 py-2 hover:bg-gray-200 dark:hover:bg-gray-700">
-                    Stock Bajo
+                    Stock Bajo ({counts.low})
                   </TabsTrigger>
                 </TabsList>
                 <div className="flex flex-col gap-2 sm:flex-row w-full lg:w-auto">
@@ -264,6 +471,11 @@ export default function Inventory() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                    {searchTerm && (
+                      <div className="absolute right-2 top-2 text-xs text-muted-foreground">
+                        {filteredInventory.length} resultados
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 sm:flex-none">
                     <Button
@@ -277,109 +489,19 @@ export default function Inventory() {
                 </div>
               </div>
               <TabsContent value="all" className="space-y-4">
-                <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="bg-gray-200 dark:bg-gray-700">
-                        <TableRow className="text-gray-700 dark:text-gray-200">
-                          <TableHead className="w-[300px] px-4 py-2">Producto</TableHead>
-                          <TableHead className="px-4 py-2">Tipo</TableHead>
-                          <TableHead className="px-4 py-2">Stock Sellado</TableHead>
-                          <TableHead className="px-4 py-2">Stock Preparación</TableHead>
-                          <TableHead className="px-4 py-2">Última Actualización</TableHead>
-                          <TableHead className="px-4 py-2">Estado</TableHead>
-                          <TableHead className="px-4 py-2 text-right">Acciones</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredInventory.map((item) => {
-                          const { product, sealed, preparation, updatedAt } = item;
-                          return (
-                            <TableRow
-                              key={item._id}
-                              className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                            >
-                              <TableCell className="font-medium px-4 py-2">
-                                {product.name}
-                                {product.flavor && ` (${product.flavor})`}
-                              </TableCell>
-                              <TableCell className="px-4 py-2">
-                                <div className="flex items-center gap-2">
-                                  {getTypeIcon(product.type)}
-                                  <span className="capitalize">
-                                    {product.type === "sealed"
-                                      ? "Sellado"
-                                      : product.type === "prepared"
-                                      ? "Preparación"
-                                      : "Ambos"}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="px-4 py-2">
-                                {product.type === "prepared" ? "N/A" : (sealed ?? "N/A")} unidades
-                              </TableCell>
-                              <TableCell className="px-4 py-2">
-                                {product.type !== "sealed" ? (
-                                  <div>
-                                    <div>{preparation?.currentPortions ?? "N/A"} porciones</div>
-                                    <div className="text-sm text-gray-500">
-                                      ({preparation?.units ?? "N/A"} unidades)
-                                    </div>
-                                  </div>
-                                ) : (
-                                  "N/A"
-                                )}
-                              </TableCell>
-                              <TableCell className="px-4 py-2">
-                                {new Date(updatedAt).toLocaleString() || "N/A"}
-                              </TableCell>
-                              <TableCell className="px-4 py-2">
-                                <Badge className={`${getStatusColor(product.status as "low" | "normal" | "critical")}`}>
-                                  {product.status === "normal"
-                                    ? "Normal"
-                                    : product.status === "low"
-                                    ? "Bajo"
-                                    : "Crítico"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="px-4 py-2 text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                      <span className="sr-only">Abrir menú</span>
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 shadow-md">
-                                    <DropdownMenuLabel className="px-4 py-2">Acciones</DropdownMenuLabel>
-                                    <DropdownMenuItem
-                                      className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        setSelectedInventory(item);
-                                        setShowDetailsModal(true);
-                                      }}
-                                    >
-                                      Ver detalles
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                      onClick={() => {
-                                        setSelectedInventory(item);
-                                        setShowHistoryModal(true);
-                                      }}
-                                    >
-                                      Ver historial
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
+                <InventoryTable inventory={filteredInventory} />
+              </TabsContent>
+              <TabsContent value="sealed" className="space-y-4">
+                <InventoryTable inventory={filteredInventory} />
+              </TabsContent>
+              <TabsContent value="preparation" className="space-y-4">
+                <InventoryTable inventory={filteredInventory} />
+              </TabsContent>
+              <TabsContent value="both" className="space-y-4">
+                <InventoryTable inventory={filteredInventory} />
+              </TabsContent>
+              <TabsContent value="low" className="space-y-4">
+                <InventoryTable inventory={filteredInventory} />
               </TabsContent>
             </Tabs>
           </CardContent>

@@ -243,18 +243,23 @@ export function ProductSalesReport({ selectedClub, selectedPeriod, dateRange }: 
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={data.topProducts}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 70 }}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 90 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
                       dataKey="name"
                       stroke="hsl(var(--muted-foreground))"
-                      fontSize={12}
+                      fontSize={11}
                       tickLine={false}
                       axisLine={false}
                       angle={-45}
                       textAnchor="end"
-                      height={70}
+                      interval={0}
+                      height={90}
+                      tickFormatter={(value) => {
+                        // Limitar a 25 caracteres y agregar elipsis si es necesario
+                        return value.length > 25 ? value.substring(0, 25) + '...' : value;
+                      }}
                     />
                     <YAxis
                       stroke="hsl(var(--muted-foreground))"

@@ -34,30 +34,32 @@ export default function Account() {
           onValueChange={setActiveTab}
           className="space-y-8"
         >
-          <TabsList className="bg-muted/50 w-full justify-start">
-            <TabsTrigger value="personal">Información Personal</TabsTrigger>
-            <TabsTrigger value="security">Seguridad</TabsTrigger>
-            <TabsTrigger value="preferences">Preferencias</TabsTrigger>
-            {isOwner && <TabsTrigger value="subscription">Suscripción</TabsTrigger>}
+          <TabsList className="bg-muted/50 w-full justify-start overflow-x-auto flex-nowrap whitespace-nowrap scrollbar-none">
+            <TabsTrigger value="personal" className="min-w-fit">Información Personal</TabsTrigger>
+            <TabsTrigger value="security" className="min-w-fit">Seguridad</TabsTrigger>
+            <TabsTrigger value="preferences" className="min-w-fit">Preferencias</TabsTrigger>
+            {isOwner && <TabsTrigger value="subscription" className="min-w-fit">Suscripción</TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="personal" className="space-y-4 animate-in fade-in-50">
-            <PersonalInfo />
-          </TabsContent>
-
-          <TabsContent value="security" className="space-y-4 animate-in fade-in-50">
-            <Security />
-          </TabsContent>
-
-          <TabsContent value="preferences" className="space-y-4 animate-in fade-in-50">
-            <Preferences />
-          </TabsContent>
-
-          {isOwner && (
-            <TabsContent value="subscription" className="space-y-4 animate-in fade-in-50">
-              <Subscription />
+          <div className="px-1">
+            <TabsContent value="personal" className="space-y-4 animate-in fade-in-50">
+              <PersonalInfo />
             </TabsContent>
-          )}
+
+            <TabsContent value="security" className="space-y-4 animate-in fade-in-50">
+              <Security />
+            </TabsContent>
+
+            <TabsContent value="preferences" className="space-y-4 animate-in fade-in-50">
+              <Preferences />
+            </TabsContent>
+
+            {isOwner && (
+              <TabsContent value="subscription" className="space-y-4 animate-in fade-in-50">
+                <Subscription />
+              </TabsContent>
+            )}
+          </div>
         </Tabs>
       </div>
     </div>

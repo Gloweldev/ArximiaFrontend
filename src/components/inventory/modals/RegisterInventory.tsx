@@ -44,6 +44,7 @@ export function RegisterInventoryModal({
     totalUnits: "",
     sealedUnits: "",
     preparationUnits: "",
+    registerAsExpense: true, // Nuevo campo
   });
 
   // Función de debounce para búsquedas
@@ -140,18 +141,10 @@ export function RegisterInventoryModal({
       return;
     }
 
-    const price = parseFloat(formData.purchasePrice) || 0;
-    if (price <= 0) {
-      toast({
-        title: "Error",
-        description: "El precio debe ser mayor a 0",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      const price = parseFloat(formData.purchasePrice);
+      const price = parseFloat(formData.purchasePrice) || 0;
+      const movementType = formData.registerAsExpense ? "compra" : "ajuste";
+      
       // Se preparará el movimiento según el tipo del producto
       if (selectedProduct.type === "sealed") {
         const totalUnits = parseInt(formData.totalUnits) || 0;
@@ -163,14 +156,21 @@ export function RegisterInventoryModal({
           });
           return;
         }
+        
+        const productDesc = selectedProduct.flavor 
+          ? `${selectedProduct.name} - ${selectedProduct.flavor}`
+          : selectedProduct.name;
+        
         await api.post("/inventory/movement", {
           productId: selectedProduct.id,
           clubId,
-          type: "compra",
+          type: movementType,
           quantity: totalUnits,
           unit: "sealed",
-          purchasePrice: price, // Agregamos el precio
-          description: `Compra de inventario (Producto sellado) - Precio: $${price}`,
+          purchasePrice: formData.registerAsExpense ? price : undefined,
+          description: formData.registerAsExpense 
+            ? `Compra de inventario ${productDesc}`
+            : `Ajuste de inventario: ${productDesc} - ${totalUnits} unidades`,
         });
       } else if (selectedProduct.type === "prepared") {
         const totalUnits = parseInt(formData.totalUnits) || 0;
@@ -182,17 +182,22 @@ export function RegisterInventoryModal({
           });
           return;
         }
+        const productDesc = selectedProduct.flavor 
+          ? `${selectedProduct.name} - ${selectedProduct.flavor}`
+          : selectedProduct.name;
+
         await api.post("/inventory/movement", {
           productId: selectedProduct.id,
           clubId,
-          type: "compra",
+          type: movementType,
           quantity: totalUnits,
           unit: "portion",
-          purchasePrice: price, // Agregamos el precio
-          description: `Compra de inventario (Producto para preparación) - Precio: $${price}`,
+          purchasePrice: formData.registerAsExpense ? price : undefined,
+          description: formData.registerAsExpense 
+            ? `Compra de inventario ${productDesc}`
+            : `Ajuste de inventario: ${productDesc} - ${totalUnits} unidades`,
         });
       } else if (selectedProduct.type === "both") {
-        // Para productos mixtos se envían dos movimientos, si se completan las cantidades correspondientes
         const sealedUnits = parseInt(formData.sealedUnits) || 0;
         const prepUnits = parseInt(formData.preparationUnits) || 0;
         if (sealedUnits <= 0 && prepUnits <= 0) {
@@ -203,33 +208,45 @@ export function RegisterInventoryModal({
           });
           return;
         }
+
+        const productDesc = selectedProduct.flavor 
+          ? `${selectedProduct.name} - ${selectedProduct.flavor}`
+          : selectedProduct.name;
+
         if (sealedUnits > 0) {
           await api.post("/inventory/movement", {
             productId: selectedProduct.id,
             clubId,
-            type: "compra",
+            type: movementType,
             quantity: sealedUnits,
             unit: "sealed",
-            purchasePrice: price, // Agregamos el precio
-            description: `Compra de inventario (Producto sellado) - Precio: $${price}`,
+            purchasePrice: formData.registerAsExpense ? price : undefined,
+            description: formData.registerAsExpense 
+              ? `Compra de inventario ${productDesc} (Sellado)`
+              : `Ajuste de inventario: ${productDesc} - ${sealedUnits} unidades (Sellado)`,
           });
         }
+        
         if (prepUnits > 0) {
           await api.post("/inventory/movement", {
             productId: selectedProduct.id,
             clubId,
-            type: "compra",
+            type: movementType,
             quantity: prepUnits,
             unit: "portion",
-            purchasePrice: price, // Agregamos el precio
-            description: `Compra de inventario (Producto para preparación) - Precio: $${price}`,
+            purchasePrice: formData.registerAsExpense ? price : undefined,
+            description: formData.registerAsExpense 
+              ? `Compra de inventario ${productDesc} (Preparación)`
+              : `Ajuste de inventario: ${productDesc} - ${prepUnits} unidades (Preparación)`,
           });
         }
       }
       
       toast({
         title: "Éxito",
-        description: "Inventario registrado y se han actualizado los movimientos en gastos",
+        description: formData.registerAsExpense 
+          ? "Inventario registrado y se han actualizado los movimientos en gastos"
+          : "Inventario actualizado correctamente",
       });
       
       onOpenChange(false);
@@ -253,6 +270,7 @@ export function RegisterInventoryModal({
       totalUnits: "",
       sealedUnits: "",
       preparationUnits: "",
+      registerAsExpense: true, // Nuevo campo
     });
   };
 
@@ -400,6 +418,29 @@ export function RegisterInventoryModal({
                     </PopoverTrigger>
                     <PopoverContent className="w-60 p-2 text-sm text-gray-700 bg-gray-100 rounded shadow-md">
                       Marcando esta opción se usará el precio predefinido del catálogo y no se podrá editar.
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Nuevo checkbox para registrar como gasto */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="registerAsExpense"
+                    checked={formData.registerAsExpense}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, registerAsExpense: !!checked })
+                    }
+                  />
+                  <Label htmlFor="registerAsExpense" className="text-sm">
+                    Registrar compra como un gasto
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger>
+                      <HelpCircle className="h-4 w-4 text-gray-400 cursor-pointer" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-60 p-2 text-sm text-gray-700 bg-gray-100 rounded shadow-md">
+                      Si está marcado, el movimiento se registrará como una compra y generará un gasto.
+                      Si se desmarca, se registrará como un ajuste de inventario sin afectar los gastos.
                     </PopoverContent>
                   </Popover>
                 </div>

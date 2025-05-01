@@ -31,7 +31,7 @@ interface Props {
 interface Movimiento {
   _id: string;
   fecha: string;
-  tipo: 'venta' | 'gasto';
+  tipo: 'venta' | 'gasto' | 'ajuste';
   descripcion: string;
   monto: number;
   itemGroups?: Array<{
@@ -49,6 +49,12 @@ interface Movimiento {
     _id: string;
   };
   estado: string;
+  motivo?: string; // Para ajustes
+  productos?: Array<{
+    nombre: string;
+    cantidad: number;
+    tipo: string;
+  }>; // Para ajustes
 }
 
 interface MovimientoResponse {
@@ -157,6 +163,7 @@ export function TransactionHistoryReport({ selectedClub, selectedPeriod, dateRan
                 <SelectItem value="todos">Todos los movimientos</SelectItem>
                 <SelectItem value="venta">Ventas</SelectItem>
                 <SelectItem value="gasto">Gastos</SelectItem>
+                <SelectItem value="ajuste">Ajustes</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -245,14 +252,20 @@ export function TransactionHistoryReport({ selectedClub, selectedPeriod, dateRan
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={movimiento.tipo === 'venta' ? 'default' : 'destructive'}
-                          className={
-                            movimiento.tipo === 'venta'
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                          variant={
+                            movimiento.tipo === 'venta' ? 'default' : 
+                            movimiento.tipo === 'gasto' ? 'destructive' : 
+                            'secondary'
                           }
+                          className={cn(
+                            movimiento.tipo === 'venta' && "bg-green-100 text-green-800",
+                            movimiento.tipo === 'gasto' && "bg-red-100 text-red-800",
+                            movimiento.tipo === 'ajuste' && "bg-blue-100 text-blue-800"
+                          )}
                         >
-                          {movimiento.tipo === 'venta' ? 'Venta' : 'Gasto'}
+                          {movimiento.tipo === 'venta' ? 'Venta' : 
+                          movimiento.tipo === 'gasto' ? 'Gasto' : 
+                          'Ajuste'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -268,14 +281,31 @@ export function TransactionHistoryReport({ selectedClub, selectedPeriod, dateRan
                               Click para ver más detalles →
                             </span>
                           </div>
+                        ) : movimiento.tipo === 'ajuste' ? (
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm font-medium">
+                              {movimiento.motivo}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {movimiento.productos?.map(p => 
+                                `${p.nombre} ${p.tipo === 'sealed' ? '(Sellados)' : '(Porciones)'} (${p.cantidad > 0 ? '+' : ''}${p.cantidad})`
+                              ).join(', ')}
+                            </span>
+                          </div>
                         ) : (
                           movimiento.descripcion
                         )}
                       </TableCell>
                       <TableCell>{movimiento.responsable.nombre}</TableCell>
                       <TableCell className="text-right tabular-nums">
-                        <span className={movimiento.tipo === 'venta' ? 'text-green-600' : 'text-red-600'}>
-                          {movimiento.tipo === 'venta' ? '+' : '-'}${Math.abs(movimiento.monto).toLocaleString()}
+                        <span className={cn(
+                          movimiento.tipo === 'venta' && 'text-green-600',
+                          movimiento.tipo === 'gasto' && 'text-red-600',
+                          movimiento.tipo === 'ajuste' && 'text-blue-600'
+                        )}>
+                          {movimiento.tipo === 'venta' ? '+' : 
+                          movimiento.tipo === 'gasto' ? '-' : 
+                          '±'}${Math.abs(movimiento.monto).toLocaleString()}
                         </span>
                       </TableCell>
                     </TableRow>

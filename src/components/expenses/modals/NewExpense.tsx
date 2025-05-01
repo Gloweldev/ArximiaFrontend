@@ -181,24 +181,30 @@ export function NewExpenseModal({ open, onOpenChange, onExpenseCreated }: NewExp
         basePayload.productId = selectedProduct.id;
 
         if (selectedProduct.type === "both") {
-          // Registrar movimiento para productos sellados
-          await api.post("/inventory/movement", {
-            productId: selectedProduct.id,
-            clubId: activeClub,
-            type: "compra",
-            quantity: sealedQuantity,
-            unit: "sealed",
-            description: `Gasto - Compra sellada: ${sealedQuantity} unidades`,
-          });
-          // Registrar movimiento para productos de preparación
-          await api.post("/inventory/movement", {
-            productId: selectedProduct.id,
-            clubId: activeClub,
-            type: "compra",
-            quantity: preparedQuantity,
-            unit: "portion",
-            description: `Gasto - Compra para preparación: ${preparedQuantity} porciones`,
-          });
+          // Registrar movimiento para productos sellados si hay cantidad
+          if (sealedQuantity > 0) {
+            await api.post("/inventory/movement", {
+              productId: selectedProduct.id,
+              clubId: activeClub,
+              type: "compra",
+              quantity: sealedQuantity,
+              unit: "sealed",
+              purchasePrice: amount, // Agregamos el precio de compra
+              description: `Gasto - Compra sellada: ${sealedQuantity} unidades`,
+            });
+          }
+          // Registrar movimiento para productos de preparación si hay cantidad
+          if (preparedQuantity > 0) {
+            await api.post("/inventory/movement", {
+              productId: selectedProduct.id,
+              clubId: activeClub,
+              type: "compra",
+              quantity: preparedQuantity,
+              unit: "portion",
+              purchasePrice: amount, // Agregamos el precio de compra
+              description: `Gasto - Compra para preparación: ${preparedQuantity} porciones`,
+            });
+          }
         } else {
           const unit = selectedProduct.type === "sealed" ? "sealed" : "portion";
           await api.post("/inventory/movement", {
@@ -207,6 +213,7 @@ export function NewExpenseModal({ open, onOpenChange, onExpenseCreated }: NewExp
             type: "compra",
             quantity,
             unit,
+            purchasePrice: amount, // Agregamos el precio de compra
             description: `Gasto - Compra de ${selectedProduct.type}: ${quantity} unidades`,
           });
         }

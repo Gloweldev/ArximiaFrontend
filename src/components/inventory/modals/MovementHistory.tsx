@@ -21,7 +21,7 @@ import { getMovementIcon } from "../utils";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { DateRange, DayPicker } from "react-day-picker";
-import { format } from "date-fns";
+import { format, addWeeks, subWeeks, addMonths, subMonths, addYears, subYears, startOfWeek, endOfWeek } from "date-fns";
 import { 
   Select, 
   SelectContent, 
@@ -35,6 +35,8 @@ import {
   PopoverTrigger 
 } from "@/components/ui/popover"; // Corrección: importar desde la carpeta de componentes UI
 import { es } from "date-fns/locale";
+import { addDays, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Movement {
   id: string;
@@ -63,37 +65,53 @@ export function MovementHistoryModal({
   const [currentPage, setCurrentPage] = useState(1);
   const [dateFilter, setDateFilter] = useState<"week" | "month" | "year" | "custom">("week");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const itemsPerPage = 10;
 
   const getDateRange = () => {
-    const now = new Date();
-    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+    const now = currentDate;
     
     switch (dateFilter) {
-      case "week":
-        const startOfWeek = new Date(startOfDay);
-        startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
-        return {
-          from: startOfWeek,
-          to: new Date()
-        };
-      case "month":
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        return {
-          from: startOfMonth,
-          to: new Date()
-        };
-      case "year":
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        return {
-          from: startOfYear,
-          to: new Date()
-        };
+      case "week": {
+        const start = startOfWeek(now, { weekStartsOn: 1 });
+        const end = endOfWeek(now, { weekStartsOn: 1 });
+        return { from: start, to: end };
+      }
+      case "month": {
+        const start = startOfMonth(now);
+        const end = endOfMonth(now);
+        return { from: start, to: end };
+      }
+      case "year": {
+        const start = startOfYear(now);
+        const end = endOfYear(now);
+        return { from: start, to: end };
+      }
       case "custom":
-        return dateRange;
+        return dateRange || { from: subDays(now, 7), to: now };
       default:
-        return null;
+        return { from: subDays(now, 7), to: now };
     }
+  };
+
+  const formatDateSafely = (date: Date | undefined) => {
+    return date ? format(date, "dd/MM/yy") : "";
+  };
+
+  const getFormattedDateRange = () => {
+    const range = getDateRange();
+    if (!range.from || !range.to) return {};
+    
+    const fromDate = new Date(range.from);
+    fromDate.setHours(0, 0, 0, 0);
+    
+    const toDate = new Date(range.to);
+    toDate.setHours(23, 59, 59, 999);
+    
+    return {
+      from: fromDate.toISOString(),
+      to: toDate.toISOString()
+    };
   };
 
   useEffect(() => {
@@ -101,17 +119,19 @@ export function MovementHistoryModal({
       const fetchMovements = async () => {
         setLoading(true);
         try {
-          const range = getDateRange();
-          const params = range ? {
-            from: range.from ? format(range.from, "yyyy-MM-dd") : undefined, // Corrección: agregar verificación para from
-            to: range.to ? format(range.to, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")
-          } : {};
+          const dateParams = getFormattedDateRange();
+          console.log('Fetching with dates:', dateParams); // Para debug
+          
+          const response = await api.get(`/inventory/movements/${productId}`, {
+            params: dateParams
+          });
 
-          const response = await api.get(`/inventory/movements/${productId}`, { params });
           const sortedMovements = response.data.sort((a: Movement, b: Movement) => 
             new Date(b.date).getTime() - new Date(a.date).getTime()
           );
+          
           setMovements(sortedMovements);
+          setCurrentPage(1); // Reset a la primera página cuando cambian los filtros
         } catch (error) {
           console.error("Error al cargar el historial de movimientos:", error);
           toast({
@@ -125,7 +145,7 @@ export function MovementHistoryModal({
       };
       fetchMovements();
     }
-  }, [open, productId, dateFilter, dateRange]);
+  }, [open, productId, dateFilter, dateRange, currentDate]);
 
   const totalPages = Math.ceil(movements.length / itemsPerPage);
 
@@ -136,9 +156,39 @@ export function MovementHistoryModal({
     return movements.slice(startIndex, endIndex);
   };
 
+  const navigateDate = (direction: 'prev' | 'next') => {
+    setCurrentDate(current => {
+      switch (dateFilter) {
+        case 'week':
+          return direction === 'next' ? addWeeks(current, 1) : subWeeks(current, 1);
+        case 'month':
+          return direction === 'next' ? addMonths(current, 1) : subMonths(current, 1);
+        case 'year':
+          return direction === 'next' ? addYears(current, 1) : subYears(current, 1);
+        default:
+          return current;
+      }
+    });
+  };
+
+  const getDateRangeDisplay = () => {
+    const range = getDateRange();
+    switch (dateFilter) {
+      case 'week':
+        if (!range.from || !range.to) return '';
+        return `Semana del ${format(range.from, 'dd/MM/yyyy')} al ${format(range.to, 'dd/MM/yyyy')}`;
+      case 'month':
+        return format(currentDate, 'MMMM yyyy', { locale: es });
+      case 'year':
+        return format(currentDate, 'yyyy');
+      default:
+        return '';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-4">
           <DialogTitle className="text-lg md:text-xl">Historial de Movimientos</DialogTitle>
           <DialogDescription className="text-sm text-gray-600">
@@ -146,57 +196,111 @@ export function MovementHistoryModal({
           </DialogDescription>
           
           {/* Filtros de fecha */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select 
               value={dateFilter} 
               onValueChange={(value: "week" | "month" | "year" | "custom") => {
                 setDateFilter(value);
+                setCurrentDate(new Date()); // Reset a fecha actual al cambiar filtro
                 setCurrentPage(1);
+                if (value !== "custom") {
+                  setDateRange(undefined);
+                }
               }}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleccionar período" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="week">Semana actual</SelectItem>
-                <SelectItem value="month">Mes actual</SelectItem>
-                <SelectItem value="year">Año actual</SelectItem>
+                <SelectItem value="week">Esta semana</SelectItem>
+                <SelectItem value="month">Este mes</SelectItem>
+                <SelectItem value="year">Este año</SelectItem>
                 <SelectItem value="custom">Personalizado</SelectItem>
               </SelectContent>
             </Select>
 
-            {dateFilter === "custom" && (
+            {dateFilter !== 'custom' ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigateDate('prev')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex-1 text-center font-medium">
+                  {getDateRangeDisplay()}
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigateDate('next')}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full sm:w-auto text-xs justify-start"
-                  >
+                  <Button variant="outline" className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dateRange?.from ? (
                       dateRange.to ? (
                         <>
-                          {format(dateRange.from, "dd/MM/yyyy")} -{" "}
-                          {format(dateRange.to, "dd/MM/yyyy")}
+                          {formatDateSafely(dateRange.from)} -{" "}
+                          {formatDateSafely(dateRange.to)}
                         </>
                       ) : (
-                        format(dateRange.from, "dd/MM/yyyy")
+                        formatDateSafely(dateRange.from)
                       )
                     ) : (
                       <span>Seleccionar fechas</span>
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <DayPicker
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={1}
-                    locale={es}
-                  />
+                <PopoverContent className="w-auto p-0" align="center">
+                  <div className="p-3 border-b">
+                    <DayPicker
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      numberOfMonths={1}
+                      locale={es}
+                      showOutsideDays
+                      className="border-0"
+                      classNames={{
+                        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                        month: "space-y-4",
+                        caption: "flex justify-center pt-1 relative items-center",
+                        caption_label: "text-sm font-medium",
+                        nav: "space-x-1 flex items-center",
+                        nav_button: cn(
+                          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+                        ),
+                        nav_button_previous: "absolute left-1",
+                        nav_button_next: "absolute right-1",
+                        table: "w-full border-collapse space-y-1",
+                        head_row: "flex",
+                        head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+                        row: "flex w-full mt-2",
+                        cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                        day: cn(
+                          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+                        ),
+                        day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                        day_today: "bg-accent text-accent-foreground",
+                        day_outside: "text-muted-foreground opacity-50",
+                        day_disabled: "text-muted-foreground opacity-50",
+                        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                        day_hidden: "invisible",
+                      }}
+                    />
+                  </div>
                 </PopoverContent>
               </Popover>
             )}

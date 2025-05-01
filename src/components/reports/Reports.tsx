@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useUser } from '@/hooks/useUser'; // Nuevo hook para obtener info del usuario
 import { exportReport } from '@/services/export-service';
+import { toast } from "sonner";
 
 import { FinancialReport } from "./sections/FinancialReport";
 import { ProductSalesReport } from "./sections/ProductSalesReport";
@@ -109,8 +110,10 @@ export default function Reports() {
   }, []);
 
   const handleExport = (format: 'excel' | 'pdf') => {
-    setExportConfig(prev => ({ ...prev, format }));
-    setExportOpen(true);
+    toast.info("Exportación en desarrollo", {
+      description: `La exportación de reportes en formato ${format.toUpperCase()} estará disponible próximamente.`,
+      duration: 3000,
+    });
   };
 
   const handleConfirmExport = async () => {
@@ -465,13 +468,11 @@ export default function Reports() {
                     <ChevronDown className="h-4 w-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => handleExport('excel')}>
-                    Exportar a Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                    Exportar a PDF
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-64">
+                  <div className="px-4 py-3 text-center text-sm text-muted-foreground">
+                    <p>Función en desarrollo</p>
+                    <p className="mt-1">La exportación de reportes estará disponible próximamente</p>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

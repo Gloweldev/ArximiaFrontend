@@ -6,6 +6,7 @@ export interface Sale {
   created_at: string;
   total: number;
   items: {
+    flavor: any;
     productName: ReactNode;
     id: string;
     product_id: string;

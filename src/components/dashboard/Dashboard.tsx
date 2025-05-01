@@ -70,7 +70,7 @@ const quickActions = [
   { icon: Briefcase, label: "Registrar Gasto", color: "bg-purple-500", path: "/expenses" },
   { icon: Box, label: "Ver Inventario", color: "bg-green-500", path: "/inventory" },
   { icon: FileText, label: "Generar Reporte", color: "bg-yellow-500", path: "/reports" },
-  { icon: Plus, label: "Agregar Producto", color: "bg-pink-500", path: "/products" },
+  { icon: Plus, label: "Nuevo Producto", color: "bg-pink-500", path: "/catalog" },
   { icon: Users, label: "Gestión de Empleados", color: "bg-indigo-500", path: "/employees" },
 ];
 
@@ -207,6 +207,23 @@ export default function Dashboard() {
     }
   };
 
+  useEffect(() => {
+    console.log('KPIs Dashboard:', {
+      ventas: {
+        actual: kpis.salesTotal,
+        crecimiento: kpis.salesGrowth
+      },
+      ganancias: {
+        actual: kpis.netProfit,
+        crecimiento: kpis.netProfitGrowth
+      },
+      gastos: kpis.expensesTotal,
+      inventario: {
+        critico: kpis.inventoryCritical,
+        ideal: kpis.inventoryIdeal
+      }
+    });
+  }, [kpis]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-purple-50/50 to-blue-50/50 dark:from-background dark:via-purple-950/5 dark:to-blue-950/5 p-4 md:p-6 lg:p-8">
@@ -372,9 +389,18 @@ export default function Dashboard() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-muted-foreground">Ventas del Mes</h3>
-                <div className="flex items-center text-green-500">
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                  <span className="text-sm">+{kpis.salesGrowth}%</span>
+                <div className="flex items-center">
+                  {kpis.salesGrowth >= 0 ? (
+                    <>
+                      <TrendingUp className="h-4 w-4 mr-1 text-green-500" />
+                      <span className="text-sm text-green-500">+{kpis.salesGrowth}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <TrendingDown className="h-4 w-4 mr-1 text-red-500" />
+                      <span className="text-sm text-red-500">{kpis.salesGrowth}%</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div>
@@ -389,9 +415,18 @@ export default function Dashboard() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-muted-foreground">Ganancias Netas</h3>
-                <div className="flex items-center text-red-500">
-                  <TrendingDown className="h-4 w-4 mr-1" />
-                  <span className="text-sm">-{kpis.netProfitGrowth}%</span>
+                <div className="flex items-center">
+                  {kpis.netProfitGrowth >= 0 ? (
+                    <>
+                      <TrendingUp className="h-4 w-4 mr-1 text-green-500" />
+                      <span className="text-sm text-green-500">+{kpis.netProfitGrowth}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <TrendingDown className="h-4 w-4 mr-1 text-red-500" />
+                      <span className="text-sm text-red-500">{kpis.netProfitGrowth}%</span>
+                    </>
+                  )}
                 </div>
               </div>
               <div>
@@ -422,19 +457,18 @@ export default function Dashboard() {
           >
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-muted-foreground">Inventario Crítico</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  Inventario Crítico
+                </h3>
                 <Package className="h-4 w-4 text-orange-500" />
               </div>
               <div>
                 <div className="text-2xl font-bold">{kpis.inventoryCritical} productos</div>
                 {kpis.inventoryItems.length > 0 && (
                   <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                    {kpis.inventoryItems.slice(0, 3).map((item, index) => (
-                      <li key={index}>• {item.name}: {item.stock}</li>
+                    {kpis.inventoryItems.map((item, index) => (
+                      <li key={index}>{item.name}: {item.stock}</li>
                     ))}
-                    {kpis.inventoryItems.length > 3 && (
-                      <li>y {kpis.inventoryItems.length - 3} más con bajo stock...</li>
-                    )}
                   </ul>
                 )}
               </div>

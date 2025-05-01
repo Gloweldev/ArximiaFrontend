@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -14,7 +14,11 @@ import {
   Menu,
   X,
   Users,
+  LogOut,
 } from "lucide-react";
+import { useClub } from "@/context/ClubContext";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface SidebarProps {
   className?: string;
@@ -36,6 +40,8 @@ const menuItems = [
 export function Sidebar({ className }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { setActiveClub } = useClub();
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -58,6 +64,23 @@ export function Sidebar({ className }: SidebarProps) {
   useEffect(() => {
     setIsOpen(false);
   }, [location]);
+
+  const handleLogout = () => {
+    try {
+      // Limpiar el token
+      localStorage.removeItem("token");
+      // Limpiar el club activo
+      setActiveClub("");
+      // Limpiar cualquier otro dato del localStorage si existe
+      localStorage.clear();
+      // Mostrar mensaje de éxito
+      toast.success("Sesión cerrada correctamente");
+      // Redirigir al login
+      navigate("/");
+    } catch (error) {
+      toast.error("Error al cerrar sesión");
+    }
+  };
 
   return (
     <>
@@ -115,6 +138,18 @@ export function Sidebar({ className }: SidebarProps) {
               );
             })}
           </ul>
+
+          {/* Botón de cerrar sesión */}
+          <div className="absolute bottom-8 left-0 right-0 px-3">
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Cerrar Sesión</span>
+            </Button>
+          </div>
         </nav>
       </div>
     </>
