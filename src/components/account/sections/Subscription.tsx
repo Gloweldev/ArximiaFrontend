@@ -37,15 +37,24 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import api from "@/services/api"; // Asegúrate de que la ruta es la correcta
 
+interface Subscription {
+  plan: string;
+  fechaExpiracion: string;
+  clubsMax: number;
+  empleadosMax: number;
+  precio: number;
+}
+
+interface Payment {
+  invoiceId: string;
+  date: string;
+  amount: number;
+  status: 'paid' | 'pending' | 'failed';
+}
+
 export function Subscription() {
-  const [subscription, setSubscription] = useState<{
-    plan: string;
-    fechaExpiracion: string;
-    clubsMax: number;
-    empleadosMax: number;
-    precio: number;
-  } | null>(null);
-  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [noSubscription, setNoSubscription] = useState(false);
@@ -105,7 +114,7 @@ export function Subscription() {
     }
   };
 
-  const handleDownloadInvoice = async (invoiceId: any) => {
+  const handleDownloadInvoice = async (invoiceId: string) => {
     try {
       const res = await api.get(`/subscription/invoice/${invoiceId}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
