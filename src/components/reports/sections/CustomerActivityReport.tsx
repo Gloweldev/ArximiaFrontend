@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,6 +34,8 @@ interface CustomerTrend {
 }
 
 interface TopCustomer {
+  phone: ReactNode;
+  email: any;
   _id: string;
   name: string;
   type: string;
@@ -198,18 +200,6 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
         <Card className="p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium">Tendencia de Clientes</h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>Este gráfico muestra la evolución de clientes activos y nuevos a lo largo del tiempo.
-                     Los clientes activos son aquellos que han realizado compras en el período,
-                     mientras que los nuevos son los recién registrados.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
           <div className="h-[300px] md:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -291,17 +281,6 @@ export function CustomerActivityReport({ selectedClub, selectedPeriod, dateRange
       <Card className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium">Clientes Principales</h3>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="h-4 w-4 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[300px]">
-                <p>Lista de los clientes más activos ordenados por volumen de compras.
-                   Incluye información detallada sobre su actividad y estado actual.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
         <div className="overflow-x-auto">
           <Table>

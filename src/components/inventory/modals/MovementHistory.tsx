@@ -234,7 +234,7 @@ export function MovementHistoryModal({
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             <div className="flex items-center gap-1">
-                              {getMovementIcon(movement.type)}
+                              {getMovementIcon(movement.type as "entrada" | "salida" | "ajuste")}
                               <span className="capitalize">{movement.type}</span>
                             </div>
                           </TableCell>

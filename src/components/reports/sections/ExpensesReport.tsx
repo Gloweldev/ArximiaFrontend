@@ -131,7 +131,18 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
     return <div className="flex items-center justify-center h-96 text-red-500">{error}</div>;
   }
 
-  const percentageChange = ((data.totalExpenses - data.previousTotalExpenses) / data.previousTotalExpenses) * 100;
+  // Add this validation check
+  if (!data.topExpenses || data.topExpenses.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96 text-muted-foreground">
+        No hay datos de gastos disponibles para el período seleccionado.
+      </div>
+    );
+  }
+
+  const percentageChange = data.previousTotalExpenses !== 0 
+    ? ((data.totalExpenses - data.previousTotalExpenses) / data.previousTotalExpenses) * 100
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -197,7 +208,7 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
                 Mayor Gasto
               </h3>
               <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
-                {(() => {
+                {data.topExpenses[0] && (() => {
                   const normalizedCategory = normalizeCategory(data.topExpenses[0].category);
                   const CategoryIcon = categoryIcons[normalizedCategory as keyof typeof categoryIcons] || Bookmark;
                   return <CategoryIcon className="h-4 w-4 text-orange-600" />;
@@ -206,14 +217,14 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
             </div>
             <div>
               <div className="text-2xl font-bold text-orange-600">
-                ${data.topExpenses[0].amount.toLocaleString()}
+                ${data.topExpenses[0]?.amount.toLocaleString() || "0"}
               </div>
               <div className="flex flex-col gap-1 mt-1">
                 <span className="text-sm font-medium">
-                  {data.topExpenses[0].description}
+                  {data.topExpenses[0]?.description || "No hay gastos"}
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  {new Date(data.topExpenses[0].date).toLocaleDateString()}
+                  {data.topExpenses[0]?.date ? new Date(data.topExpenses[0].date).toLocaleDateString() : "-"}
                 </span>
               </div>
             </div>
@@ -226,18 +237,6 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
         <Card className="p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium">Distribución por Categoría</h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>Visualización de la distribución de gastos por categoría.
-                     El gráfico muestra la proporción de cada tipo de gasto
-                     respecto al total.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
           <div className="h-[300px] md:h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -268,10 +267,10 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
                                 {payload[0].name}
                               </span>
                               <span className="font-bold">
-                                ${payload[0].value.toLocaleString()}
+                                {`${Number(payload[0]?.value ?? 0).toLocaleString()}`}
                               </span>
                               <span className="text-sm text-muted-foreground">
-                                {((payload[0].value / total) * 100).toFixed(1)}%
+                                {((Number(payload[0]?.value ?? 0) / total) * 100).toFixed(1)}%
                               </span>
                             </div>
                           </div>
@@ -290,17 +289,6 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
         <Card className="p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium">Resumen por Categoría</h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>Desglose detallado de gastos por categoría con porcentajes
-                     y barras de progreso para una comparación visual rápida.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
           <div className="space-y-4">
             {data.categoryDistribution.map((category) => {
@@ -335,17 +323,6 @@ export function ExpensesReport({ selectedClub, selectedPeriod, dateRange }: Prop
       <Card className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium">Gastos más Altos</h3>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="h-4 w-4 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[300px]">
-                <p>Lista de los gastos más significativos ordenados por monto.
-                   Incluye detalles como categoría, fecha y descripción.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
         <div className="overflow-x-auto">
           <Table>

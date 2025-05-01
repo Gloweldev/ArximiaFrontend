@@ -27,18 +27,18 @@ export function EditClubModal({ open, onOpenChange, club, onSave }: EditClubProp
 
   useEffect(() => {
     if (club) {
-      const defaultSchedule = {
-        monday: { closed: false, ranges: [] },
-        tuesday: { closed: false, ranges: [] },
-        wednesday: { closed: false, ranges: [] },
-        thursday: { closed: false, ranges: [] },
-        friday: { closed: false, ranges: [] },
-        saturday: { closed: false, ranges: [] },
-        sunday: { closed: false, ranges: [] },
+      const defaultSchedule: Record<string, { closed: boolean; ranges: { open: string; close: string }[] }> = {
+            monday: { closed: false, ranges: [] },
+            tuesday: { closed: false, ranges: [] },
+            wednesday: { closed: false, ranges: [] },
+            thursday: { closed: false, ranges: [] },
+            friday: { closed: false, ranges: [] },
+            saturday: { closed: false, ranges: [] },
+            sunday: { closed: false, ranges: [] },
       };
 
       const schedule = { ...defaultSchedule };
-      for (const day in club.schedule) {
+      for (const day of Object.keys(club.schedule) as (keyof typeof defaultSchedule)[]) {
         if (club.schedule[day]) {
           schedule[day] = {
             closed: club.schedule[day].closed || false,
@@ -270,7 +270,7 @@ export function EditClubModal({ open, onOpenChange, club, onSave }: EditClubProp
                                   ...formData,
                                   schedule: {
                                     ...formData.schedule,
-                                    [day]: { ...formData.schedule[day], closed: checked },
+                                    [day]: { ...formData.schedule[day], closed: Boolean(checked) },
                                   },
                                 })
                               }
@@ -381,7 +381,7 @@ export function EditClubModal({ open, onOpenChange, club, onSave }: EditClubProp
                                   ...formData,
                                   schedule: {
                                     ...formData.schedule,
-                                    [day]: { ...formData.schedule[day], closed: checked },
+                                    [day]: { ...formData.schedule[day], closed: Boolean(checked) },
                                   },
                                 })
                               }

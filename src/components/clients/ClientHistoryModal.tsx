@@ -58,7 +58,7 @@ export default function ClientHistoryModal({ client, onClose }: Props) {
         const productId = String(item.product_id);
         const productName = item.productName || 'Desconocido';
         if (!productCounts[productId]) {
-          productCounts[productId] = { count: 0, name: productName };
+          productCounts[productId] = { count: 0, name: String(productName) };
         }
         productCounts[productId].count += item.quantity;
       });

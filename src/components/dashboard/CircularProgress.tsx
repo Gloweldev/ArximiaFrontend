@@ -49,6 +49,16 @@ export function CircularProgress({ value }: CircularProgressProps) {
   );
 }
 
+interface MonthlyGoalCardProps {
+  kpis: { salesTotal: number };
+  monthlyGoal: number;
+  goalProgress: number;
+  goalRemaining: number;
+  goalProjection: number;
+  setNewGoal: (newGoal: string) => void;
+  setEditGoalOpen: (open: boolean) => void;
+}
+
 export default function MonthlyGoalCard({ 
   kpis, 
   monthlyGoal, 
@@ -57,7 +67,7 @@ export default function MonthlyGoalCard({
   goalProjection, 
   setNewGoal, 
   setEditGoalOpen 
-}) {
+}: MonthlyGoalCardProps) {
   const isCompleted = goalProgress >= 100;
   
   return (

@@ -1,4 +1,8 @@
+import { ReactNode } from "react";
+
 export interface Client {
+  visitCount: ReactNode;
+  email: string;
   _id: string;
   createdAt: string | undefined;
   id: string;

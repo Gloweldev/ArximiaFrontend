@@ -1,6 +1,9 @@
+import { ReactNode } from "react";
+
 export type ProductType = "sealed" | "prepared" | "both";
 
 export interface Product {
+  purchasePrice: ReactNode;
   catalogPrice: any;
   flavor: any;
   id: string;
