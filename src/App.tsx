@@ -17,6 +17,8 @@ import Clubs from "./components/clubs/Clubs";
 import Clients from "./components/clients/Clients";
 import Employees from './components/employees/Employees'
 import Reports from "./components/reports/Reports";
+import { PricingPage } from './pages/Pricing';
+import { LandingPage } from './pages/Landing';
 
 export default function App() {
   return (
@@ -24,9 +26,12 @@ export default function App() {
       <Router>
         <Routes>
           {/* Rutas públicas */}
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/landing" element={<LandingPage />} />
 
           {/* Rutas protegidas */}
           <Route element={<RequireAuth />}>
